@@ -18,7 +18,7 @@ by_day = website.db.all("""
          WHERE e.route = er.id
            AND date_trunc('day', ts_start)::date = date_trunc('day', timestamp)::date
       GROUP BY day, network, p.id
-      ORDER BY day ASC;
+      ORDER BY day DESC;
 """)
 
 fmt = lambda x: "{:,.2f}".format(x)

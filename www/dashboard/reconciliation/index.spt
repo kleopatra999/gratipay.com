@@ -15,7 +15,7 @@ _by_month = website.db.all("""
       FROM exchanges, exchange_routes
      WHERE exchanges.route = exchange_routes.id
   GROUP BY month, network, status
-  ORDER BY month ASC;
+  ORDER BY month DESC;
 
 """)
 
@@ -52,7 +52,7 @@ def by_month():
         by_month[month][network]['total_payout'] += payouts
 
 
-    return by_month
+    return list(reversed(sorted(by_month.items())))
 
 
 def by_month_csv(by_month):
@@ -60,7 +60,7 @@ def by_month_csv(by_month):
                 "Failed Payins", "Unknown Payin", "Total Payins", "Payin Fee Income",
                 "Succeeded Payouts", "Pending Payouts", "Failed Payouts",
                 "Unknown Payout", "Total Payouts", "Payout Fee Income"] ]
-    for month, recs in sorted(by_month.items()):
+    for month, recs in by_month:
         for network,transfers in recs.items():
             row = []
             row.append( str(month)[:7] )
@@ -102,7 +102,7 @@ by_month
             href="https://github.com/gratipay/finances">financial accounting</a>
             process.</p>
 
-        {% for month, recs in by_month|dictsort %}
+        {% for month, recs in by_month %}
         <h2>{{ str(month)[:7] }}</h2>
         <table>
             <thead>
