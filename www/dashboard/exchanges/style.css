@@ -1,8 +1,10 @@
 body {
     font-family: monospace;
+    font-size: large;
 }
 table {
     border-collapse: collapse;
+    font: normal 16pt/20pt monospace;
 }
 tbody tr:hover {
     background: #FFC;
@@ -10,11 +12,13 @@ tbody tr:hover {
 th {
     text-align: left;
     vertical-align: bottom;
-    font-family: monospace;
+    font-weight: bold;
     padding-right: 30px;
 }
 td {
-    text-align: right;
+    text-align: left;
     padding-right: 20px;
-    font-family: monospace;
+}
+.amount {
+    text-align: right;
 }
