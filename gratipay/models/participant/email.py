@@ -76,12 +76,33 @@ class Email(object):
         if len(self.get_emails()) > 9:
             raise TooManyEmailAddresses(email)
 
+        self.app.email_queue.put( self
+                                , 'verification'
+                                , email=email
+                                , link=self.get_email_verification_link(email)
+                                , include_unsubscribe=False
+                                 )
+        if self.email_address:
+            self.app.email_queue.put( self
+                                    , 'verification_notice'
+                                    , new_email=email
+                                    , include_unsubscribe=False
+
+                                    # Don't count this one against their sending quota.
+                                    # It's going to their own verified address, anyway.
+                                    , _user_initiated=False
+                                     )
+
+    def get_email_verification_link(self, email):
         nonce = str(uuid.uuid4())
         verification_start = utcnow()
 
         try:
             with self.db.get_cursor() as c:
-                self.app.add_event(c, 'participant', dict(id=self.id, action='add', values=dict(email=email)))
+                self.app.add_event( c
+                                  , 'participant'
+                                  , dict(id=self.id, action='add', values=dict(email=email))
+                                   )
                 c.run("""
                     INSERT INTO emails
                                 (address, nonce, verification_start, participant_id)
@@ -103,22 +124,7 @@ class Email(object):
         username = self.username_lower
         encoded_email = encode_for_querystring(email)
         link = "{base_url}/~{username}/emails/verify.html?email2={encoded_email}&nonce={nonce}"
-        self.app.email_queue.put( self
-                                , 'verification'
-                                , email=email
-                                , link=link.format(**locals())
-                                , include_unsubscribe=False
-                                 )
-        if self.email_address:
-            self.app.email_queue.put( self
-                                    , 'verification_notice'
-                                    , new_email=email
-                                    , include_unsubscribe=False
-
-                                    # Don't count this one against their sending quota.
-                                    # It's going to their own verified address, anyway.
-                                    , _user_initiated=False
-                                     )
+        return link.format(**locals())
 
 
     def update_email(self, email):
