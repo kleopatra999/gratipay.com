@@ -17,6 +17,7 @@ from gratipay.elsewhere import UserInfo
 from gratipay.exceptions import NoSelfTipping, NoTippee, BadAmount
 from gratipay.models.account_elsewhere import AccountElsewhere
 from gratipay.models.exchange_route import ExchangeRoute
+from gratipay.models.package import NPM, Package
 from gratipay.models.participant import Participant, MAX_TIP, MIN_TIP
 from gratipay.security import user
 from gratipay.testing.vcr import use_cassette
@@ -195,14 +196,15 @@ class Harness(unittest.TestCase):
         return team
 
 
-    def make_package(self, package_manager='npm', name='foo', description='Foo',
+    def make_package(self, package_manager=NPM, name='foo', description='Foo',
                                                                      emails=['alice@example.com']):
         """Factory for packages.
         """
-        return self.db.one( 'INSERT INTO packages (package_manager, name, description, emails) '
-                            'VALUES (%s, %s, %s, %s) RETURNING *'
-                          , (package_manager, name, description, emails)
-                           )
+        self.db.run( 'INSERT INTO packages (package_manager, name, description, emails) '
+                     'VALUES (%s, %s, %s, %s) RETURNING *'
+                   , (package_manager, name, description, emails)
+                    )
+        return Package.from_names(NPM, name)
 
 
     def make_participant(self, username, **kw):
