@@ -7,7 +7,7 @@ from pytest import raises
 
 from gratipay.exceptions import CannotRemovePrimaryEmail, EmailTaken, EmailNotVerified
 from gratipay.exceptions import TooManyEmailAddresses, Throttled
-from gratipay.testing import P
+from gratipay.testing import P, Harness
 from gratipay.testing.email import QueuedEmailHarness, SentEmailHarness
 from gratipay.models.participant import email as _email
 from gratipay.utils import encode_for_querystring
@@ -404,3 +404,48 @@ class TestQueueBranchEmail(QueuedEmailHarness):
         assert output == []
         assert errors == []
         assert self.count_email_messages() == 0
+
+
+class StartEmailVerification(Harness):
+
+    def get_claims(self):
+        return self.db.all('''
+            SELECT name
+              FROM claims c
+              JOIN packages p
+                ON c.package_id = p.id
+          ORDER BY name
+        ''')
+
+    def test_returns_a_link(self):
+        link = self.make_participant('alice').start_email_verification('alice@example.com')
+        assert link.startswith('/~alice/emails/verify.html?email2=YWxpY2VAZXhhbXBsZS5jb20~&nonce=')
+
+    def test_makes_no_claims_by_default(self):
+        self.make_participant('alice').start_email_verification('alice@example.com')
+        assert self.get_claims() == []
+
+    def test_makes_a_claim_if_asked_to(self):
+        alice = self.make_participant('alice')
+        foo = self.make_package()
+        alice.start_email_verification('alice@example.com', foo)
+        assert self.get_claims() == ['foo']
+
+    def test_can_make_two_claims(self):
+        alice = self.make_participant('alice')
+        foo = self.make_package()
+        bar = self.make_package(name='bar')
+        alice.start_email_verification('alice@example.com', foo, bar)
+        assert self.get_claims() == ['bar', 'foo']
+
+    def test_will_make_competing_claims(self):
+        foo = self.make_package()
+        self.make_participant('alice').start_email_verification('alice@example.com', foo)
+        self.make_participant('bob').start_email_verification('bob@example.com', foo)
+        assert self.get_claims() == ['foo', 'foo']
+
+    def test_adds_events(self):
+        foo = self.make_package()
+        self.make_participant('alice').start_email_verification('alice@example.com', foo)
+        events = [e.payload['action'] for e in self.db.all('select * from events order by ts')]
+        assert events == ['add', 'start-claim']

@@ -49,7 +49,7 @@ elif action == 'remove':
 elif action == 'add-email-and-claim-package':
     package_id = request.body['package_id']
     package = Package.from_id(package_id)
-    package.send_confirmation_email(address)
+    participant.add_email(address)
     msg = _("Check {email} for a confirmation link.", email=address)
 else:
     raise Response(400, 'unknown action "%s"' % action)
