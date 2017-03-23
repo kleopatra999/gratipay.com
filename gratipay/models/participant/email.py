@@ -79,7 +79,7 @@ class Email(object):
         self.app.email_queue.put( self
                                 , 'verification'
                                 , email=email
-                                , link=self.get_email_verification_link(email)
+                                , link=self.start_email_verification(email)
                                 , include_unsubscribe=False
                                  )
         if self.email_address:
@@ -93,7 +93,19 @@ class Email(object):
                                     , _user_initiated=False
                                      )
 
-    def get_email_verification_link(self, email):
+
+    def start_email_verification(self, email, *packages):
+        """Start an email verification process.
+
+        :param unicode email: the email address for which to begin verification
+
+        :param packages: :py:class:`~gratipay.models.package.Package` objects
+            for which a successful verification will also entail verification of
+            ownership of the package
+
+        :returns: a URL by which to complete the verification process
+
+        """
         nonce = str(uuid.uuid4())
         verification_start = utcnow()
 
@@ -108,6 +120,20 @@ class Email(object):
                                 (address, nonce, verification_start, participant_id)
                          VALUES (%s, %s, %s, %s)
                 """, (email, nonce, verification_start, self.id))
+                if packages:
+                    VALUES, values = [], []
+                    for p in packages:
+                        VALUES.append('(%s, %s)')
+                        values += [nonce, p.id]
+                    VALUES = ', '.join(VALUES)
+                    c.run('INSERT INTO claims (nonce, package_id) VALUES ' + VALUES, values)
+                    self.app.add_event( c
+                                      , 'participant'
+                                      , dict( id=self.id
+                                            , action='start-claim'
+                                            , values=dict(package_ids=[p.id for p in packages])
+                                             )
+                                       )
         except IntegrityError:
             nonce = self.db.one("""
                 UPDATE emails
@@ -118,7 +144,7 @@ class Email(object):
              RETURNING nonce
             """, (verification_start, self.id, email))
             if not nonce:
-                return self.add_email(email)
+                return self.add_email(email)  # try again
 
         base_url = gratipay.base_url
         username = self.username_lower
