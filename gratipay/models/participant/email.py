@@ -58,45 +58,46 @@ class Email(object):
         :raises Throttled: if the participant adds too many emails too quickly
 
         """
+        with self.db.get_cursor() as c:
+            # Check that this address isn't already verified
+            owner = c.one("""
+                SELECT p.username
+                  FROM emails e INNER JOIN participants p
+                    ON e.participant_id = p.id
+                 WHERE e.address = %(email)s
+                   AND e.verified IS true
+            """, locals())
+            if owner:
+                if owner == self.username:
+                    raise EmailAlreadyVerified(email)
+                else:
+                    raise EmailTaken(email)
 
-        # Check that this address isn't already verified
-        owner = self.db.one("""
-            SELECT p.username
-              FROM emails e INNER JOIN participants p
-                ON e.participant_id = p.id
-             WHERE e.address = %(email)s
-               AND e.verified IS true
-        """, locals())
-        if owner:
-            if owner == self.username:
-                raise EmailAlreadyVerified(email)
-            else:
-                raise EmailTaken(email)
+            if len(self.get_emails()) > 9:
+                raise TooManyEmailAddresses(email)
 
-        if len(self.get_emails()) > 9:
-            raise TooManyEmailAddresses(email)
-
-        self.app.email_queue.put( self
-                                , 'verification'
-                                , email=email
-                                , link=self.get_email_verification_link(email)
-                                , include_unsubscribe=False
-                                 )
-        if self.email_address:
             self.app.email_queue.put( self
-                                    , 'verification_notice'
-                                    , new_email=email
+                                    , 'verification'
+                                    , email=email
+                                    , link=self.get_email_verification_link(c, email)
                                     , include_unsubscribe=False
-
-                                    # Don't count this one against their sending quota.
-                                    # It's going to their own verified address, anyway.
-                                    , _user_initiated=False
                                      )
+            if self.email_address:
+                self.app.email_queue.put( self
+                                        , 'verification_notice'
+                                        , new_email=email
+                                        , include_unsubscribe=False
+
+                                        # Don't count this one against their sending quota.
+                                        # It's going to their own verified address, anyway.
+                                        , _user_initiated=False
+                                         )
 
 
-    def get_email_verification_link(self, email, *packages):
+    def get_email_verification_link(self, c, email, *packages):
         """Get a link to complete an email verification workflow.
 
+        :param Cursor c: the cursor to use
         :param unicode email: the email address to be verified
 
         :param packages: :py:class:`~gratipay.models.package.Package` objects
@@ -106,19 +107,18 @@ class Email(object):
         :returns: a URL by which to complete the verification process
 
         """
-        with self.db.get_cursor() as c:
-            self.app.add_event( c
-                              , 'participant'
-                              , dict(id=self.id, action='add', values=dict(email=email))
-                               )
-            nonce = self.get_email_verification_nonce(c, email)
-            self.start_package_claims(c, nonce, *packages)
-
-        base_url = gratipay.base_url
-        username = self.username_lower
-        encoded_email = encode_for_querystring(email)
+        self.app.add_event( c
+                          , 'participant'
+                          , dict(id=self.id, action='add', values=dict(email=email))
+                           )
+        nonce = self.get_email_verification_nonce(c, email)
+        self.start_package_claims(c, nonce, *packages)
         link = "{base_url}/~{username}/emails/verify.html?email2={encoded_email}&nonce={nonce}"
-        return link.format(**locals())
+        return link.format( base_url=gratipay.base_url
+                          , username=self.username_lower
+                          , encoded_email=encode_for_querystring(email)
+                          , nonce=nonce
+                           )
 
 
     def get_email_verification_nonce(self, c, email):
