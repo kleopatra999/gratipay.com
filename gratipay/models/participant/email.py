@@ -134,6 +134,7 @@ class Email(object):
                      VALUES (%s, %s, %s, %s)
             """, (email, nonce, verification_start, self.id))
         except IntegrityError:
+            # They already have a verification open. Reuse it.
             nonce = self.db.one("""
                 UPDATE emails
                    SET verification_start=%s
@@ -143,6 +144,7 @@ class Email(object):
              RETURNING nonce
             """, (verification_start, self.id, email))
             if not nonce:
+                # The previous verification wasn't completed?
                 return self.start_email_verification(email)  # try again
         return nonce
 
