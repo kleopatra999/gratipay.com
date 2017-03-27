@@ -79,7 +79,7 @@ class Email(object):
         self.app.email_queue.put( self
                                 , 'verification'
                                 , email=email
-                                , link=self.start_email_verification(email)
+                                , link=self.get_email_verification_link(email)
                                 , include_unsubscribe=False
                                  )
         if self.email_address:
@@ -94,8 +94,8 @@ class Email(object):
                                      )
 
 
-    def start_email_verification(self, email, *packages):
-        """Start an email verification process.
+    def get_email_verification_link(self, email, *packages):
+        """Get a link to complete an email verification workflow.
 
         :param unicode email: the email address for which to begin verification
 
