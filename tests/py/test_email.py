@@ -49,7 +49,7 @@ class TestEndpoints(Alice):
         actual = json.loads(response.body)
         assert actual
 
-    def test_adding_email_sends_verification_email(self):
+    def test_starting_email_verification_triggers_verification_email(self):
         self.hit_email_spt('add-email', 'alice@gratipay.com')
         assert self.count_email_messages() == 1
         last_email = self.get_last_email()
@@ -69,7 +69,7 @@ class TestEndpoints(Alice):
         last_email = self.get_last_email()
         assert "To stop receiving" not in last_email['body_text']
 
-    def test_adding_second_email_sends_verification_notice(self):
+    def test_verifying_second_email_sends_verification_notice(self):
         self.verify_and_change_email('alice1@example.com', 'alice2@example.com', _flush=False)
         assert self.count_email_messages() == 3
         last_email = self.get_last_email()
@@ -219,7 +219,7 @@ class TestEndpoints(Alice):
 
 class TestFunctions(Alice):
 
-    def add_and_verify(self, participant, address):
+    def add(self, participant, address):
         participant.start_email_verification('alice@gratipay.com')
         nonce = participant.get_email('alice@gratipay.com').nonce
         r = participant.verify_email('alice@gratipay.com', nonce)
@@ -227,7 +227,7 @@ class TestFunctions(Alice):
 
     def test_cannot_update_email_to_already_verified(self):
         bob = self.make_participant('bob', claimed_time='now')
-        self.add_and_verify(self.alice, 'alice@gratipay.com')
+        self.add(self.alice, 'alice@gratipay.com')
 
         with self.assertRaises(EmailTaken):
             bob.start_email_verification('alice@gratipay.com')
@@ -276,7 +276,7 @@ class TestFunctions(Alice):
         raises(Throttled, self.app.email_queue.put, self.alice, "branch")
 
     def test_flushing_queue_resets_throttling(self):
-        self.add_and_verify(self.alice, 'alice@example.com')
+        self.add(self.alice, 'alice@example.com')
         assert self.app.email_queue.flush() == 1
         self.app.email_queue.put(self.alice, "verification")
         self.app.email_queue.put(self.alice, "branch")
@@ -406,7 +406,7 @@ class TestQueueBranchEmail(QueuedEmailHarness):
         assert self.count_email_messages() == 0
 
 
-class GettEmailVerificationLink(Harness):
+class GetEmailVerificationLink(Harness):
 
     def get_claims(self):
         return self.db.all('''
