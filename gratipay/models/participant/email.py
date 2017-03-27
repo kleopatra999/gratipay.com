@@ -9,7 +9,7 @@ from psycopg2 import IntegrityError
 
 import gratipay
 from gratipay.exceptions import EmailAlreadyVerified, EmailTaken, CannotRemovePrimaryEmail
-from gratipay.exceptions import EmailNotVerified, TooManyEmailAddresses
+from gratipay.exceptions import EmailNotVerified, TooManyEmailAddresses, EmailNotOnFile
 from gratipay.security.crypto import constant_time_compare
 from gratipay.utils import encode_for_querystring
 
@@ -41,57 +41,74 @@ class Email(object):
 
     """
 
-    def start_email_verification(self, email):
+    def start_email_verification(self, email, *packages):
         """Add an email address for a participant.
 
         This is called when adding a new email address, and when resending the
         verification email for an unverified email address.
 
         :param unicode email: the email address to add
+        :param Package packages: packages to optionally also verify ownership of
 
         :returns: ``None``
 
         :raises EmailAlreadyVerified: if the email is already verified for
-            this participant
+            this participant (unless they're claiming packages)
         :raises EmailTaken: if the email is verified for a different participant
+        :raises EmailNotOnFile: if the email address is not on file for any of
+            the packages
         :raises TooManyEmailAddresses: if the participant already has 10 emails
         :raises Throttled: if the participant adds too many emails too quickly
 
         """
         with self.db.get_cursor() as c:
-            # Check that this address isn't already verified
-            owner = c.one("""
-                SELECT p.username
-                  FROM emails e INNER JOIN participants p
-                    ON e.participant_id = p.id
-                 WHERE e.address = %(email)s
-                   AND e.verified IS true
-            """, locals())
-            if owner:
-                if owner == self.username:
-                    raise EmailAlreadyVerified(email)
-                else:
-                    raise EmailTaken(email)
+            self.validate_email_verification_request(c, email, *packages)
+            link = self.get_email_verification_link(c, email, *packages)
 
-            if len(self.get_emails()) > 9:
-                raise TooManyEmailAddresses(email)
-
+        self.app.email_queue.put( self
+                                , 'verification'
+                                , email=email
+                                , link=link
+                                , include_unsubscribe=False
+                                 )
+        if self.email_address:
             self.app.email_queue.put( self
-                                    , 'verification'
-                                    , email=email
-                                    , link=self.get_email_verification_link(c, email)
+                                    , 'verification_notice'
+                                    , new_email=email
                                     , include_unsubscribe=False
-                                     )
-            if self.email_address:
-                self.app.email_queue.put( self
-                                        , 'verification_notice'
-                                        , new_email=email
-                                        , include_unsubscribe=False
 
-                                        # Don't count this one against their sending quota.
-                                        # It's going to their own verified address, anyway.
-                                        , _user_initiated=False
-                                         )
+                                    # Don't count this one against their sending quota.
+                                    # It's going to their own verified address, anyway.
+                                    , _user_initiated=False
+                                     )
+
+
+    def validate_email_verification_request(self, c, email, *packages):
+        """Given a cursor, email, and packages, return ``None`` or raise.
+        """
+        if not all(email in p.emails for p in packages):
+            raise EmailNotOnFile(email)
+
+        owner_id = c.one("""
+            SELECT participant_id
+              FROM emails
+             WHERE address = %(email)s
+               AND verified IS true
+        """, dict(email=email))
+
+        if owner_id:
+            if owner_id != self.id:
+                raise EmailTaken(email)
+            elif packages:
+                pass  # allow reverify if claiming packages
+            else:
+                raise EmailAlreadyVerified(email)
+
+        if len(self.get_emails()) > 9:
+            if owner_id and owner_id == self.id and packages:
+                pass  # they're using an already-verified email to verify packages
+            else:
+                raise TooManyEmailAddresses(email)
 
 
     def get_email_verification_link(self, c, email, *packages):
@@ -125,27 +142,33 @@ class Email(object):
         """Given a cursor and email address, return a verification nonce.
         """
         nonce = str(uuid.uuid4())
-        verification_start = utcnow()
 
-        try:
+        n = c.one( 'SELECT count(*) FROM emails WHERE address=%s AND participant_id=%s'
+                 , (email, self.id)
+                  )  # can't use eafp here unfortunately because of cursor exception handling
+        assert n in (0, 1)  # sanity check
+
+        if n == 0:
+
+            # Not in the table yet. This should throw an IntegrityError if the
+            # address is verified for a different participant.
+
+            c.run( "INSERT INTO emails (participant_id, address, nonce) VALUES (%s, %s, %s)"
+                 , (self.id, email, nonce)
+                  )
+        else:
+
+            # Already in the table. Restart verification. Henceforth, old links
+            # will fail.
+
             c.run("""
-                INSERT INTO emails
-                            (address, nonce, verification_start, participant_id)
-                     VALUES (%s, %s, %s, %s)
-            """, (email, nonce, verification_start, self.id))
-        except IntegrityError:
-            # They already have a verification open. Reuse it.
-            nonce = self.db.one("""
                 UPDATE emails
-                   SET verification_start=%s
+                   SET nonce=%s
+                     , verification_start=now()
                  WHERE participant_id=%s
                    AND address=%s
-                   AND verified IS NULL
-             RETURNING nonce
-            """, (verification_start, self.id, email))
-            if not nonce:
-                # The previous verification wasn't completed?
-                return self.start_email_verification(email)  # try again
+            """, (nonce, self.id, email))
+
         return nonce
 
 
