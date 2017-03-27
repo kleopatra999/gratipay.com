@@ -447,5 +447,5 @@ class GettEmailVerificationLink(Harness):
     def test_adds_events(self):
         foo = self.make_package()
         self.make_participant('alice').get_email_verification_link('alice@example.com', foo)
-        events = [e.payload['action'] for e in self.db.all('select * from events order by ts')]
+        events = [e.payload['action'] for e in self.db.all('select * from events order by id')]
         assert events == ['add', 'start-claim']
