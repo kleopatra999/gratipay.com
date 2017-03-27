@@ -424,34 +424,42 @@ class GetEmailVerificationLink(Harness):
         ''')
 
     def test_returns_a_link(self):
-        link = self.make_participant('alice').get_email_verification_link('alice@example.com')
+        with self.db.get_cursor() as c:
+            alice = self.make_participant('alice')
+            link = alice.get_email_verification_link(c, 'alice@example.com')
         assert link.startswith('/~alice/emails/verify.html?email2=YWxpY2VAZXhhbXBsZS5jb20~&nonce=')
 
     def test_makes_no_claims_by_default(self):
-        self.make_participant('alice').get_email_verification_link('alice@example.com')
+        with self.db.get_cursor() as c:
+            self.make_participant('alice').get_email_verification_link(c, 'alice@example.com')
         assert self.get_claims() == []
 
     def test_makes_a_claim_if_asked_to(self):
         alice = self.make_participant('alice')
         foo = self.make_package()
-        alice.get_email_verification_link('alice@example.com', foo)
+        with self.db.get_cursor() as c:
+            alice.get_email_verification_link(c, 'alice@example.com', foo)
         assert self.get_claims() == ['foo']
 
     def test_can_make_two_claims(self):
         alice = self.make_participant('alice')
         foo = self.make_package()
         bar = self.make_package(name='bar')
-        alice.get_email_verification_link('alice@example.com', foo, bar)
+        with self.db.get_cursor() as c:
+            alice.get_email_verification_link(c, 'alice@example.com', foo, bar)
         assert self.get_claims() == ['bar', 'foo']
 
     def test_will_make_competing_claims(self):
         foo = self.make_package()
-        self.make_participant('alice').get_email_verification_link('alice@example.com', foo)
-        self.make_participant('bob').get_email_verification_link('bob@example.com', foo)
+        with self.db.get_cursor() as c:
+            self.make_participant('alice').get_email_verification_link(c, 'alice@example.com', foo)
+        with self.db.get_cursor() as c:
+            self.make_participant('bob').get_email_verification_link(c, 'bob@example.com', foo)
         assert self.get_claims() == ['foo', 'foo']
 
     def test_adds_events(self):
         foo = self.make_package()
-        self.make_participant('alice').get_email_verification_link('alice@example.com', foo)
+        with self.db.get_cursor() as c:
+            self.make_participant('alice').get_email_verification_link(c, 'alice@example.com', foo)
         events = [e.payload['action'] for e in self.db.all('select * from events order by id')]
         assert events == ['add', 'start-claim']
