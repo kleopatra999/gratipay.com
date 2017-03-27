@@ -453,6 +453,17 @@ class StartEmailVerification(Alice):
         assert nonce1 != nonce()
 
 
+class RemoveEmail(Alice):
+
+    def test_removing_email_clears_claims(self):
+        foo = self.make_package()
+        self.alice.start_email_verification('alice@example.com', foo)
+        claims = lambda: self.db.all('select package_id from claims')
+        assert claims() == [foo.id]
+        self.alice.remove_email('alice@example.com')
+        assert claims() == []
+
+
 class GetEmailVerificationLink(Harness):
 
     def get_claims(self):
