@@ -443,6 +443,15 @@ class StartEmailVerification(Alice):
         foo = self.make_package(emails=['bob@example.com'])
         raises(EmailNotOnFile, self.alice.start_email_verification, 'alice@example.com', foo)
 
+    def test_restarting_verification_clears_old_claims(self):
+        foo = self.make_package()
+        start = lambda: self.alice.start_email_verification('alice@example.com', foo)
+        nonce = lambda: self.db.one('select nonce from claims')
+        start()
+        nonce1 = nonce()
+        start()
+        assert nonce1 != nonce()
+
 
 class GetEmailVerificationLink(Harness):
 
