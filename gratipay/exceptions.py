@@ -40,6 +40,9 @@ class EmailTaken(ProblemChangingEmail):
 class CannotRemovePrimaryEmail(ProblemChangingEmail):
     msg = "You cannot remove your primary email address."
 
+class EmailNotOnFile(ProblemChangingEmail):
+    msg = "The email address '{}' is not on file for this package."
+
 class EmailNotVerified(ProblemChangingEmail):
     msg = "The email address '{}' is not verified."
 

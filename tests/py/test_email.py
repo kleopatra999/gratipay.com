@@ -7,6 +7,7 @@ from pytest import raises
 
 from gratipay.exceptions import CannotRemovePrimaryEmail, EmailTaken, EmailNotVerified
 from gratipay.exceptions import TooManyEmailAddresses, Throttled, EmailAlreadyVerified
+from gratipay.exceptions import EmailNotOnFile
 from gratipay.testing import P, Harness
 from gratipay.testing.email import QueuedEmailHarness, SentEmailHarness
 from gratipay.models.participant import email as _email
@@ -188,12 +189,12 @@ class TestEndpoints(Alice):
         actual = P('alice').email_address
         assert expected == actual
 
-    def test_nonce_is_reused_when_resending_email(self):
+    def test_nonce_is_not_reused_when_resending_email(self):
         self.hit_email_spt('add-email', 'alice@example.com')
         nonce1 = self.alice.get_email('alice@example.com').nonce
         self.hit_email_spt('resend', 'alice@example.com')
         nonce2 = self.alice.get_email('alice@example.com').nonce
-        assert nonce1 == nonce2
+        assert nonce1 != nonce2
 
     def test_emails_page_shows_emails(self):
         self.verify_and_change_email('alice@example.com', 'alice@example.net')
@@ -411,6 +412,37 @@ class StartEmailVerification(Alice):
             self.add(self.alice, 'alice-{}@example.com'.format(i), _flush=True)
         raises(TooManyEmailAddresses, self.alice.start_email_verification, 'alice@example.com')
 
+    def test_can_include_packages_in_verification(self):
+        foo = self.make_package()
+        self.alice.start_email_verification('alice@example.com', foo)
+        assert self.get_last_email()['subject'] == 'Connect to alice on Gratipay?'
+        assert self.db.one('select package_id from claims') == foo.id
+
+    def test_can_claim_package_even_when_address_already_verified(self):
+        self.add(self.alice, 'alice@example.com')
+        foo = self.make_package()
+        self.alice.start_email_verification('alice@example.com', foo)
+        assert self.get_last_email()['subject'] == \
+                                               'Connecting alice@example.com to alice on Gratipay.'
+        assert self.db.one('select package_id from claims') == foo.id
+
+    def test_claiming_package_with_verified_address_doesnt_count_against_max(self):
+        for i in range(10):
+            self.add(self.alice, 'alice-{}@example.com'.format(i), _flush=True)
+        foo = self.make_package(emails=['alice-4@example.com'])
+        self.alice.start_email_verification('alice-4@example.com', foo)
+        assert self.db.one('select package_id from claims') == foo.id
+
+    def test_claiming_package_with_someone_elses_verified_address_is_a_no_go(self):
+        self.add(self.alice, 'alice@example.com')
+        bob = self.make_participant('bob', claimed_time='now')
+        foo = self.make_package()
+        raises(EmailTaken, bob.start_email_verification, 'alice@example.com', foo)
+
+    def test_claiming_package_with_an_address_not_on_file_is_a_no_go(self):
+        foo = self.make_package(emails=['bob@example.com'])
+        raises(EmailNotOnFile, self.alice.start_email_verification, 'alice@example.com', foo)
+
 
 class GetEmailVerificationLink(Harness):
 
@@ -449,7 +481,7 @@ class GetEmailVerificationLink(Harness):
             alice.get_email_verification_link(c, 'alice@example.com', foo, bar)
         assert self.get_claims() == ['bar', 'foo']
 
-    def test_will_make_competing_claims(self):
+    def test_will_happily_make_competing_claims(self):
         foo = self.make_package()
         with self.db.get_cursor() as c:
             self.make_participant('alice').get_email_verification_link(c, 'alice@example.com', foo)
