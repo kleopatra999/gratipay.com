@@ -122,7 +122,7 @@ class Email(object):
 
 
     def get_email_verification_nonce(self, c, email):
-        """
+        """Given a cursor and email address, return a verification nonce.
         """
         nonce = str(uuid.uuid4())
         verification_start = utcnow()
