@@ -6,7 +6,7 @@ import sys
 from pytest import raises
 
 from gratipay.exceptions import CannotRemovePrimaryEmail, EmailTaken, EmailNotVerified
-from gratipay.exceptions import TooManyEmailAddresses, Throttled
+from gratipay.exceptions import TooManyEmailAddresses, Throttled, EmailAlreadyVerified
 from gratipay.testing import P, Harness
 from gratipay.testing.email import QueuedEmailHarness, SentEmailHarness
 from gratipay.models.participant import email as _email
@@ -19,6 +19,14 @@ class Alice(QueuedEmailHarness):
     def setUp(self):
         QueuedEmailHarness.setUp(self)
         self.alice = self.make_participant('alice', claimed_time='now')
+
+    def add(self, participant, address, _flush=False):
+        participant.start_email_verification(address)
+        nonce = participant.get_email(address).nonce
+        r = participant.verify_email(address, nonce)
+        assert r == _email.VERIFICATION_SUCCEEDED
+        if _flush:
+            self.app.email_queue.flush()
 
 
 class TestEndpoints(Alice):
@@ -219,12 +227,6 @@ class TestEndpoints(Alice):
 
 class TestFunctions(Alice):
 
-    def add(self, participant, address):
-        participant.start_email_verification('alice@gratipay.com')
-        nonce = participant.get_email('alice@gratipay.com').nonce
-        r = participant.verify_email('alice@gratipay.com', nonce)
-        assert r == _email.VERIFICATION_SUCCEEDED
-
     def test_cannot_update_email_to_already_verified(self):
         bob = self.make_participant('bob', claimed_time='now')
         self.add(self.alice, 'alice@gratipay.com')
@@ -236,23 +238,6 @@ class TestFunctions(Alice):
 
         email_alice = P('alice').email_address
         assert email_alice == 'alice@gratipay.com'
-
-    def test_cannot_add_too_many_emails(self):
-        self.alice.start_email_verification('alice@gratipay.com')
-        self.alice.start_email_verification('alice@gratipay.net')
-        self.alice.start_email_verification('alice@gratipay.org')
-        self.app.email_queue.flush()
-        self.alice.start_email_verification('alice@gratipay.co.uk')
-        self.alice.start_email_verification('alice@gratipay.io')
-        self.alice.start_email_verification('alice@gratipay.co')
-        self.app.email_queue.flush()
-        self.alice.start_email_verification('alice@gratipay.eu')
-        self.alice.start_email_verification('alice@gratipay.asia')
-        self.alice.start_email_verification('alice@gratipay.museum')
-        self.app.email_queue.flush()
-        self.alice.start_email_verification('alice@gratipay.py')
-        with self.assertRaises(TooManyEmailAddresses):
-            self.alice.start_email_verification('alice@gratipay.coop')
 
     def test_html_escaping(self):
         self.alice.start_email_verification("foo'bar@example.com")
@@ -404,6 +389,27 @@ class TestQueueBranchEmail(QueuedEmailHarness):
         assert output == []
         assert errors == []
         assert self.count_email_messages() == 0
+
+
+class StartEmailVerification(Alice):
+
+    def test_starts_email_verification(self):
+        self.alice.start_email_verification('alice@example.com')
+        assert self.get_last_email()['subject'] == 'Connect to alice on Gratipay?'
+
+    def test_raises_if_already_verified(self):
+        self.add(self.alice, 'alice@example.com')
+        raises(EmailAlreadyVerified, self.alice.start_email_verification, 'alice@example.com')
+
+    def test_raises_if_already_taken(self):
+        self.add(self.alice, 'alice@example.com')
+        bob = self.make_participant('bob', claimed_time='now')
+        raises(EmailTaken, bob.start_email_verification, 'alice@example.com')
+
+    def test_maxes_out_at_10(self):
+        for i in range(10):
+            self.add(self.alice, 'alice-{}@example.com'.format(i), _flush=True)
+        raises(TooManyEmailAddresses, self.alice.start_email_verification, 'alice@example.com')
 
 
 class GetEmailVerificationLink(Harness):
