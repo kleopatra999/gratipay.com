@@ -97,7 +97,7 @@ class Email(object):
     def get_email_verification_link(self, email, *packages):
         """Get a link to complete an email verification workflow.
 
-        :param unicode email: the email address for which to begin verification
+        :param unicode email: the email address to be verified
 
         :param packages: :py:class:`~gratipay.models.package.Package` objects
             for which a successful verification will also entail verification of
@@ -106,34 +106,33 @@ class Email(object):
         :returns: a URL by which to complete the verification process
 
         """
+        with self.db.get_cursor() as c:
+            self.app.add_event( c
+                              , 'participant'
+                              , dict(id=self.id, action='add', values=dict(email=email))
+                               )
+            nonce = self.get_email_verification_nonce(c, email)
+            self.start_package_claims(c, nonce, *packages)
+
+        base_url = gratipay.base_url
+        username = self.username_lower
+        encoded_email = encode_for_querystring(email)
+        link = "{base_url}/~{username}/emails/verify.html?email2={encoded_email}&nonce={nonce}"
+        return link.format(**locals())
+
+
+    def get_email_verification_nonce(self, c, email):
+        """
+        """
         nonce = str(uuid.uuid4())
         verification_start = utcnow()
 
         try:
-            with self.db.get_cursor() as c:
-                self.app.add_event( c
-                                  , 'participant'
-                                  , dict(id=self.id, action='add', values=dict(email=email))
-                                   )
-                c.run("""
-                    INSERT INTO emails
-                                (address, nonce, verification_start, participant_id)
-                         VALUES (%s, %s, %s, %s)
-                """, (email, nonce, verification_start, self.id))
-                if packages:
-                    VALUES, values = [], []
-                    for p in packages:
-                        VALUES.append('(%s, %s)')
-                        values += [nonce, p.id]
-                    VALUES = ', '.join(VALUES)
-                    c.run('INSERT INTO claims (nonce, package_id) VALUES ' + VALUES, values)
-                    self.app.add_event( c
-                                      , 'participant'
-                                      , dict( id=self.id
-                                            , action='start-claim'
-                                            , values=dict(package_ids=[p.id for p in packages])
-                                             )
-                                       )
+            c.run("""
+                INSERT INTO emails
+                            (address, nonce, verification_start, participant_id)
+                     VALUES (%s, %s, %s, %s)
+            """, (email, nonce, verification_start, self.id))
         except IntegrityError:
             nonce = self.db.one("""
                 UPDATE emails
@@ -145,12 +144,28 @@ class Email(object):
             """, (verification_start, self.id, email))
             if not nonce:
                 return self.start_email_verification(email)  # try again
+        return nonce
 
-        base_url = gratipay.base_url
-        username = self.username_lower
-        encoded_email = encode_for_querystring(email)
-        link = "{base_url}/~{username}/emails/verify.html?email2={encoded_email}&nonce={nonce}"
-        return link.format(**locals())
+
+    def start_package_claims(self, c, nonce, *packages):
+        """Takes a cursor, nonce and list of packages, inserts into ``claims``
+        and returns ``None``.
+        """
+        if not packages:
+            return
+        VALUES, values = [], []
+        for p in packages:
+            VALUES.append('(%s, %s)')
+            values += [nonce, p.id]
+        VALUES = ', '.join(VALUES)
+        c.run('INSERT INTO claims (nonce, package_id) VALUES ' + VALUES, values)
+        self.app.add_event( c
+                          , 'participant'
+                          , dict( id=self.id
+                                , action='start-claim'
+                                , values=dict(package_ids=[p.id for p in packages])
+                                 )
+                               )
 
 
     def update_email(self, email):
@@ -160,7 +175,10 @@ class Email(object):
             raise EmailNotVerified(email)
         username = self.username
         with self.db.get_cursor() as c:
-            self.app.add_event(c, 'participant', dict(id=self.id, action='set', values=dict(primary_email=email)))
+            self.app.add_event( c
+                              , 'participant'
+                              , dict(id=self.id, action='set', values=dict(primary_email=email))
+                               )
             c.run("""
                 UPDATE participants
                    SET email_address=%(email)s
