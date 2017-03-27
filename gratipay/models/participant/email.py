@@ -142,13 +142,11 @@ class Email(object):
         """Given a cursor and email address, return a verification nonce.
         """
         nonce = str(uuid.uuid4())
+        existing = c.one( 'SELECT * FROM emails WHERE address=%s AND participant_id=%s'
+                        , (email, self.id)
+                         )  # can't use eafp here because of cursor error handling
 
-        n = c.one( 'SELECT count(*) FROM emails WHERE address=%s AND participant_id=%s'
-                 , (email, self.id)
-                  )  # can't use eafp here unfortunately because of cursor exception handling
-        assert n in (0, 1)  # sanity check
-
-        if n == 0:
+        if existing is None:
 
             # Not in the table yet. This should throw an IntegrityError if the
             # address is verified for a different participant.
@@ -161,6 +159,8 @@ class Email(object):
             # Already in the table. Restart verification. Henceforth, old links
             # will fail.
 
+            if existing.nonce:
+                c.run('DELETE FROM claims WHERE nonce=%s', (existing.nonce,))
             c.run("""
                 UPDATE emails
                    SET nonce=%s
@@ -277,7 +277,10 @@ class Email(object):
         if address == self.email_address:
             raise CannotRemovePrimaryEmail()
         with self.db.get_cursor() as c:
-            self.app.add_event(c, 'participant', dict(id=self.id, action='remove', values=dict(email=address)))
+            self.app.add_event( c
+                              , 'participant'
+                              , dict(id=self.id, action='remove', values=dict(email=address))
+                               )
             c.run("DELETE FROM emails WHERE participant_id=%s AND address=%s",
                   (self.id, address))
 
