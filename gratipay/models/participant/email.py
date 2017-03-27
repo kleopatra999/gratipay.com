@@ -41,7 +41,7 @@ class Email(object):
 
     """
 
-    def add_email(self, email):
+    def start_email_verification(self, email):
         """Add an email address for a participant.
 
         This is called when adding a new email address, and when resending the
@@ -144,7 +144,7 @@ class Email(object):
              RETURNING nonce
             """, (verification_start, self.id, email))
             if not nonce:
-                return self.add_email(email)  # try again
+                return self.start_email_verification(email)  # try again
 
         base_url = gratipay.base_url
         username = self.username_lower

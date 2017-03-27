@@ -44,7 +44,7 @@ class TestEndpoints(Alice):
         if _flush:
             self.app.email_queue.flush()
 
-    def test_participant_can_add_email(self):
+    def test_participant_can_start_email_verification(self):
         response = self.hit_email_spt('add-email', 'alice@gratipay.com')
         actual = json.loads(response.body)
         assert actual
@@ -220,7 +220,7 @@ class TestEndpoints(Alice):
 class TestFunctions(Alice):
 
     def add_and_verify(self, participant, address):
-        participant.add_email('alice@gratipay.com')
+        participant.start_email_verification('alice@gratipay.com')
         nonce = participant.get_email('alice@gratipay.com').nonce
         r = participant.verify_email('alice@gratipay.com', nonce)
         assert r == _email.VERIFICATION_SUCCEEDED
@@ -230,7 +230,7 @@ class TestFunctions(Alice):
         self.add_and_verify(self.alice, 'alice@gratipay.com')
 
         with self.assertRaises(EmailTaken):
-            bob.add_email('alice@gratipay.com')
+            bob.start_email_verification('alice@gratipay.com')
             nonce = bob.get_email('alice@gratipay.com').nonce
             bob.verify_email('alice@gratipay.com', nonce)
 
@@ -238,24 +238,24 @@ class TestFunctions(Alice):
         assert email_alice == 'alice@gratipay.com'
 
     def test_cannot_add_too_many_emails(self):
-        self.alice.add_email('alice@gratipay.com')
-        self.alice.add_email('alice@gratipay.net')
-        self.alice.add_email('alice@gratipay.org')
+        self.alice.start_email_verification('alice@gratipay.com')
+        self.alice.start_email_verification('alice@gratipay.net')
+        self.alice.start_email_verification('alice@gratipay.org')
         self.app.email_queue.flush()
-        self.alice.add_email('alice@gratipay.co.uk')
-        self.alice.add_email('alice@gratipay.io')
-        self.alice.add_email('alice@gratipay.co')
+        self.alice.start_email_verification('alice@gratipay.co.uk')
+        self.alice.start_email_verification('alice@gratipay.io')
+        self.alice.start_email_verification('alice@gratipay.co')
         self.app.email_queue.flush()
-        self.alice.add_email('alice@gratipay.eu')
-        self.alice.add_email('alice@gratipay.asia')
-        self.alice.add_email('alice@gratipay.museum')
+        self.alice.start_email_verification('alice@gratipay.eu')
+        self.alice.start_email_verification('alice@gratipay.asia')
+        self.alice.start_email_verification('alice@gratipay.museum')
         self.app.email_queue.flush()
-        self.alice.add_email('alice@gratipay.py')
+        self.alice.start_email_verification('alice@gratipay.py')
         with self.assertRaises(TooManyEmailAddresses):
-            self.alice.add_email('alice@gratipay.coop')
+            self.alice.start_email_verification('alice@gratipay.coop')
 
     def test_html_escaping(self):
-        self.alice.add_email("foo'bar@example.com")
+        self.alice.start_email_verification("foo'bar@example.com")
         last_email = self.get_last_email()
         assert 'foo&#39;bar' in last_email['body_html']
         assert '&#39;' not in last_email['body_text']
