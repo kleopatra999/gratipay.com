@@ -7,7 +7,7 @@ from pytest import raises
 
 from gratipay.exceptions import CannotRemovePrimaryEmail, EmailTaken, EmailNotVerified
 from gratipay.exceptions import TooManyEmailAddresses, Throttled, EmailAlreadyVerified
-from gratipay.exceptions import EmailNotOnFile
+from gratipay.exceptions import EmailNotOnFile, ProblemChangingEmail
 from gratipay.testing import P, Harness
 from gratipay.testing.email import QueuedEmailHarness, SentEmailHarness
 from gratipay.models.participant import email as _email
@@ -36,7 +36,10 @@ class TestEndpoints(Alice):
         f = self.client.PxST if should_fail else self.client.POST
         data = {'action': action, 'address': address}
         headers = {b'HTTP_ACCEPT_LANGUAGE': b'en'}
-        return f('/~alice/emails/modify.json', data, auth_as=user, **headers)
+        response = f('/~alice/emails/modify.json', data, auth_as=user, **headers)
+        if issubclass(response.__class__, (Throttled, ProblemChangingEmail)):
+            response.render_body({'_': lambda a: a})
+        return response
 
     def verify_email(self, email, nonce, username='alice', should_fail=False):
         # Email address is encoded in url.

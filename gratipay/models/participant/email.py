@@ -87,7 +87,7 @@ class Email(object):
         """Given a cursor, email, and packages, return ``None`` or raise.
         """
         if not all(email in p.emails for p in packages):
-            raise EmailNotOnFile(email)
+            raise EmailNotOnFile()
 
         owner_id = c.one("""
             SELECT participant_id
@@ -98,17 +98,17 @@ class Email(object):
 
         if owner_id:
             if owner_id != self.id:
-                raise EmailTaken(email)
+                raise EmailTaken()
             elif packages:
                 pass  # allow reverify if claiming packages
             else:
-                raise EmailAlreadyVerified(email)
+                raise EmailAlreadyVerified()
 
         if len(self.get_emails()) > 9:
             if owner_id and owner_id == self.id and packages:
                 pass  # they're using an already-verified email to verify packages
             else:
-                raise TooManyEmailAddresses(email)
+                raise TooManyEmailAddresses()
 
 
     def get_email_verification_link(self, c, email, *packages):
@@ -197,7 +197,7 @@ class Email(object):
         """Set the email address for the participant.
         """
         if not getattr(self.get_email(email), 'verified', False):
-            raise EmailNotVerified(email)
+            raise EmailNotVerified()
         username = self.username
         with self.db.get_cursor() as c:
             self.app.add_event( c

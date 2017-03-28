@@ -28,20 +28,8 @@ if not participant.email_lang:
 
 msg = None
 if action in ('add-email', 'resend'):
-    try:
-        participant.start_email_verification(address)
-    except EmailTaken:
-        raise Response(400, _( "{email_address} is already linked to a different Gratipay account."
-                             , email_address=address
-                              ))
-    except EmailAlreadyVerified:
-        raise Response(400, _( "You have already added and verified {email_address}."
-                             , email_address=address
-                              ))
-    except Throttled:
-        raise Response(400, _("You've initiated too many emails too quickly. Please try again in a minute or two."))
-    else:
-        msg = _("A verification email has been sent to {email_address}.", email_address=address)
+    participant.start_email_verification(address)
+    msg = _("Check your inbox for a verification email.")
 elif action == 'set-primary':
     participant.update_email(address)
 elif action == 'remove':
