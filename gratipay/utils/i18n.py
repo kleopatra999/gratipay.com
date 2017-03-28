@@ -263,9 +263,13 @@ def set_locale():
 
 class LocalizedErrorResponse(Response):
 
-    def __init__(self, code, lazy_body, **kw):
+    def __repr__(self):
+        return "<{}: {}>".format(self.__class__.__name__, self)
+
+    def __init__(self, code=400, lazy_body=None, **kw):
         Response.__init__(self, code, '', **kw)
-        self.lazy_body = lazy_body
+        if lazy_body:
+            self.lazy_body = lazy_body
 
     def render_body(self, state):
         f = self.lazy_body
