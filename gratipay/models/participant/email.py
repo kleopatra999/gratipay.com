@@ -73,7 +73,7 @@ class Email(object):
                                  )
         if self.email_address:
             self.app.email_queue.put( self
-                                    , 'verification_notice'
+                                    , 'verification-notice'
                                     , new_email=email
                                     , include_unsubscribe=False
 

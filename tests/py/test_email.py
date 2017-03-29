@@ -310,7 +310,7 @@ class TestFunctions(Alice):
     def test_queueing_email_is_throttled(self):
         self.app.email_queue.put(self.alice, "verification")
         self.app.email_queue.put(self.alice, "branch")
-        self.app.email_queue.put(self.alice, "verification_notice")
+        self.app.email_queue.put(self.alice, "verification-notice")
         raises(Throttled, self.app.email_queue.put, self.alice, "branch")
 
     def test_only_user_initiated_messages_count_towards_throttling(self):
@@ -318,8 +318,8 @@ class TestFunctions(Alice):
         self.app.email_queue.put(self.alice, "verification", _user_initiated=False)
         self.app.email_queue.put(self.alice, "branch")
         self.app.email_queue.put(self.alice, "branch", _user_initiated=False)
-        self.app.email_queue.put(self.alice, "verification_notice")
-        self.app.email_queue.put(self.alice, "verification_notice", _user_initiated=False)
+        self.app.email_queue.put(self.alice, "verification-notice")
+        self.app.email_queue.put(self.alice, "verification-notice", _user_initiated=False)
         raises(Throttled, self.app.email_queue.put, self.alice, "branch")
 
     def test_flushing_queue_resets_throttling(self):
@@ -327,9 +327,9 @@ class TestFunctions(Alice):
         assert self.app.email_queue.flush() == 1
         self.app.email_queue.put(self.alice, "verification")
         self.app.email_queue.put(self.alice, "branch")
-        self.app.email_queue.put(self.alice, "verification_notice")
+        self.app.email_queue.put(self.alice, "verification-notice")
         assert self.app.email_queue.flush() == 3
-        self.app.email_queue.put(self.alice, "verification_notice")
+        self.app.email_queue.put(self.alice, "verification-notice")
 
 
 class FlushEmailQueue(SentEmailHarness):
