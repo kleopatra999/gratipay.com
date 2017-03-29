@@ -13,16 +13,17 @@ class TestSendConfirmationLink(BrowserHarness):
         self.css('input[type=radio]')[choice].click()
         self.css('button')[0].click()
         assert self.has_element('.notification.notification-success', 1)
-        assert self.has_text('Check alice@example.com for a confirmation link.')
+        assert self.has_text('Check your inbox for a verification link.')
+        return self.db.one('select address from claims c join emails e on c.nonce = e.nonce')
 
     def test_appears_to_work(self):
         self.make_package()
-        self.check()
+        assert self.check() == 'alice@example.com'
 
     def test_works_when_there_are_multiple_addresses(self):
         self.make_package(emails=['alice@example.com', 'bob@example.com'])
-        self.check()
+        assert self.check() == 'alice@example.com'
 
     def test_can_send_to_second_email(self):
-        self.make_package(emails=['bob@example.com', 'alice@example.com'])
-        self.check(choice=1)
+        self.make_package(emails=['alice@example.com', 'bob@example.com'])
+        assert self.check(choice=1) == 'bob@example.com'
