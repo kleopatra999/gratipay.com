@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import json
 import sys
 
+import urllib
 from pytest import raises
 
 from gratipay.exceptions import CannotRemovePrimaryEmail, EmailTaken, EmailNotVerified
@@ -32,11 +33,21 @@ class Alice(QueuedEmailHarness):
 
 class TestEndpoints(Alice):
 
-    def hit_email_spt(self, action, address, user='alice', should_fail=False):
+    def hit_email_spt(self, action, address, user='alice', package_ids=[], should_fail=False):
         f = self.client.PxST if should_fail else self.client.POST
-        data = {'action': action, 'address': address}
-        headers = {b'HTTP_ACCEPT_LANGUAGE': b'en'}
-        response = f('/~alice/emails/modify.json', data, auth_as=user, **headers)
+
+        # Hack to work around Aspen test client limitations.
+        data = [ ('action', action)
+               , ('address', address)
+                ] + [('package_id', str(p)) for p in package_ids]
+        body = urllib.urlencode(data)
+
+        response = f( '/~alice/emails/modify.json'
+                    , body=body
+                    , content_type=b'application/x-www-form-urlencoded'
+                    , auth_as=user
+                    , HTTP_ACCEPT_LANGUAGE=b'en'
+                     )
         if issubclass(response.__class__, (Throttled, ProblemChangingEmail)):
             response.render_body({'_': lambda a: a})
         return response
@@ -58,8 +69,7 @@ class TestEndpoints(Alice):
 
     def test_participant_can_start_email_verification(self):
         response = self.hit_email_spt('add-email', 'alice@gratipay.com')
-        actual = json.loads(response.body)
-        assert actual
+        assert json.loads(response.body) == 'Check your inbox for a verification link.'
 
     def test_starting_email_verification_triggers_verification_email(self):
         self.hit_email_spt('add-email', 'alice@gratipay.com')
@@ -227,6 +237,54 @@ class TestEndpoints(Alice):
         # Cannot remove primary
         with self.assertRaises(CannotRemovePrimaryEmail):
             self.hit_email_spt('remove', 'alice@example.com')
+
+
+    def test_participant_can_verify_a_package_along_with_email(self):
+        foo = self.make_package(name='foo', emails=['alice@gratipay.com'])
+        response = self.hit_email_spt( 'start-verification'
+                                     , 'alice@gratipay.com'
+                                     , package_ids=[foo.id]
+                                      )
+        assert json.loads(response.body) == 'Check your inbox for a verification link.'
+        assert self.db.all('select package_id from claims order by package_id') == [foo.id]
+
+    def test_participant_cant_verify_packages_with_add_email_or_resend(self):
+        foo = self.make_package(name='foo', emails=['alice@gratipay.com'])
+        for action in ('add-email', 'resend'):
+            assert self.hit_email_spt( action
+                                     , 'alice@gratipay.com'
+                                     , package_ids=[foo.id]
+                                     , should_fail=True
+                                      ).code == 400
+
+    def test_participant_can_verify_multiple_packages_along_with_email(self):
+        package_ids = [self.make_package(name=name, emails=['alice@gratipay.com']).id
+                       for name in ('foo', 'bar', 'baz', 'buz')]
+        response = self.hit_email_spt( 'start-verification'
+                                     , 'alice@gratipay.com'
+                                     , package_ids=package_ids
+                                      )
+        assert json.loads(response.body) == 'Check your inbox for a verification link.'
+        assert self.db.all('select package_id from claims order by package_id') == package_ids
+
+    def test_package_verification_fails_if_email_not_listed(self):
+        foo = self.make_package()
+        response = self.hit_email_spt( 'start-verification'
+                                     , 'bob@gratipay.com'
+                                     , package_ids=[foo.id]
+                                     , should_fail=True
+                                      )
+        assert response.code == 400
+        assert self.db.all('select package_id from claims order by package_id') == []
+
+    def test_package_verification_fails_package_id_is_garbage(self):
+        response = self.hit_email_spt( 'start-verification'
+                                     , 'bob@gratipay.com'
+                                     , package_ids=['cheese monkey']
+                                     , should_fail=True
+                                      )
+        assert response.code == 400
+        assert self.db.all('select package_id from claims order by package_id') == []
 
 
 class TestFunctions(Alice):
