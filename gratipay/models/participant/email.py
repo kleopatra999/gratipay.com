@@ -65,21 +65,24 @@ class Email(object):
             self.validate_email_verification_request(c, email, *packages)
             link = self.get_email_verification_link(c, email, *packages)
 
-        self.app.email_queue.put( self
-                                , 'verification'
-                                , email=email
-                                , link=link
-                                , include_unsubscribe=False
-                                 )
-        if self.email_address:
+        verified_emails = self.get_verified_email_addresses()
+        kwargs = dict( npackages=len(packages)
+                     , package_name=packages[0].name if packages else ''
+                     , new_email=email
+                     , new_email_verified=email in verified_emails
+                     , link=link
+                     , include_unsubscribe=False
+                      )
+        self.app.email_queue.put(self, 'verification', email=email, **kwargs)
+        if self.email_address and self.email_address != email:
             self.app.email_queue.put( self
                                     , 'verification-notice'
-                                    , new_email=email
-                                    , include_unsubscribe=False
 
                                     # Don't count this one against their sending quota.
                                     # It's going to their own verified address, anyway.
                                     , _user_initiated=False
+
+                                    , **kwargs
                                      )
 
 

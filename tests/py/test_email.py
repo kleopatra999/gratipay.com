@@ -307,51 +307,55 @@ class TestFunctions(Alice):
         assert 'foo&#39;bar' in last_email['body_html']
         assert '&#39;' not in last_email['body_text']
 
+    def test_npm_package_name_is_handled_safely(self):
+        foo = self.make_package(name='<script>')
+        self.alice.start_email_verification("alice@example.com", foo)
+        last_email = self.get_last_email()
+        assert '<b>&lt;script&gt;</b>' in last_email['body_html']
+        assert '<script>' in last_email['body_text']
+
     def test_queueing_email_is_throttled(self):
-        self.app.email_queue.put(self.alice, "verification")
-        self.app.email_queue.put(self.alice, "branch")
-        self.app.email_queue.put(self.alice, "verification-notice")
-        raises(Throttled, self.app.email_queue.put, self.alice, "branch")
+        self.app.email_queue.put(self.alice, "base")
+        self.app.email_queue.put(self.alice, "base")
+        self.app.email_queue.put(self.alice, "base")
+        raises(Throttled, self.app.email_queue.put, self.alice, "base")
 
     def test_only_user_initiated_messages_count_towards_throttling(self):
-        self.app.email_queue.put(self.alice, "verification")
-        self.app.email_queue.put(self.alice, "verification", _user_initiated=False)
-        self.app.email_queue.put(self.alice, "branch")
-        self.app.email_queue.put(self.alice, "branch", _user_initiated=False)
-        self.app.email_queue.put(self.alice, "verification-notice")
-        self.app.email_queue.put(self.alice, "verification-notice", _user_initiated=False)
+        self.app.email_queue.put(self.alice, "base")
+        self.app.email_queue.put(self.alice, "base", _user_initiated=False)
+        self.app.email_queue.put(self.alice, "base")
+        self.app.email_queue.put(self.alice, "base", _user_initiated=False)
+        self.app.email_queue.put(self.alice, "base")
+        self.app.email_queue.put(self.alice, "base", _user_initiated=False)
         raises(Throttled, self.app.email_queue.put, self.alice, "branch")
 
     def test_flushing_queue_resets_throttling(self):
         self.add(self.alice, 'alice@example.com')
         assert self.app.email_queue.flush() == 1
-        self.app.email_queue.put(self.alice, "verification")
-        self.app.email_queue.put(self.alice, "branch")
-        self.app.email_queue.put(self.alice, "verification-notice")
+        self.app.email_queue.put(self.alice, "base")
+        self.app.email_queue.put(self.alice, "base")
+        self.app.email_queue.put(self.alice, "base")
         assert self.app.email_queue.flush() == 3
-        self.app.email_queue.put(self.alice, "verification-notice")
+        self.app.email_queue.put(self.alice, "base")
 
 
 class FlushEmailQueue(SentEmailHarness):
 
     def test_can_flush_an_email_from_the_queue(self):
         larry = self.make_participant('larry', email_address='larry@example.com')
-        self.app.email_queue.put(larry, "verification")
-
-        assert self.db.one("SELECT spt_name FROM email_queue") == "verification"
+        self.app.email_queue.put(larry, "base")
+        assert self.db.one("SELECT spt_name FROM email_queue") == "base"
         self.app.email_queue.flush()
         assert self.count_email_messages() == 1
         last_email = self.get_last_email()
         assert last_email['to'] == 'larry <larry@example.com>'
-        expected = "connect larry"
+        expected = "Something not right?"
         assert expected in last_email['body_text']
         assert self.db.one("SELECT spt_name FROM email_queue") is None
 
     def test_flushing_an_email_without_address_just_skips_it(self):
-        larry = self.make_participant('larry')
-        self.app.email_queue.put(larry, "verification")
-
-        assert self.db.one("SELECT spt_name FROM email_queue") == "verification"
+        self.app.email_queue.put(self.make_participant('larry'), "base")
+        assert self.db.one("SELECT spt_name FROM email_queue") == "base"
         self.app.email_queue.flush()
         assert self.count_email_messages() == 0
         assert self.db.one("SELECT spt_name FROM email_queue") is None
@@ -483,8 +487,7 @@ class StartEmailVerification(Alice):
         self.add(self.alice, 'alice@example.com')
         foo = self.make_package()
         self.alice.start_email_verification('alice@example.com', foo)
-        assert self.get_last_email()['subject'] == \
-                                               'Connecting alice@example.com to alice on Gratipay.'
+        assert self.get_last_email()['subject'] == 'Connect to alice on Gratipay?'
         assert self.db.one('select package_id from claims') == foo.id
 
     def test_claiming_package_with_verified_address_doesnt_count_against_max(self):
@@ -576,3 +579,101 @@ class GetEmailVerificationLink(Harness):
             self.make_participant('alice').get_email_verification_link(c, 'alice@example.com', foo)
         events = [e.payload['action'] for e in self.db.all('select * from events order by id')]
         assert events == ['add', 'start-claim']
+
+
+class VerificationBase(Alice):
+
+    def check(self, *package_names, **kw):
+        packages = [self.make_package(name=n) for n in package_names]
+        self.alice.start_email_verification('alice@example.com', *packages)
+        message = self.get_last_email()
+        return message['subject'], message['body_html'], message['body_text']
+
+    def preverify(self, address='alice@example.com'):
+        self.alice.start_email_verification(address)
+        nonce = self.alice.get_email(address).nonce
+        self.alice.verify_email(address, nonce)
+
+
+class VerificationMessage(VerificationBase):
+
+    def check(self, *a, **kw):
+        subject, html, text = VerificationBase.check(self, *a, **kw)
+        assert subject == 'Connect to alice on Gratipay?'
+        return html, text
+
+    def test_chokes_on_just_verified_address(self):
+        self.preverify()
+        raises(EmailAlreadyVerified, self.check)
+
+    def test_handles_just_address(self):
+        html, text = self.check()
+        assert ' connect <b>alice@example.com</b> to ' in html
+        assert ' connect alice@example.com to ' in text
+
+    # NB: The next two also exercise skipping the verification notice when
+    # sending package verification to an already-verified address, since the
+    # last email sent would be the verification notice if we didn't skip it.
+
+    def test_handles_verified_address_and_one_package(self):
+        self.preverify()
+        html, text = self.check('foo')
+        assert ' connect the <b>foo</b> npm package ' in html
+        assert ' connect the foo npm package ' in text
+
+    def test_handles_verified_address_and_multiple_packages(self):
+        self.preverify()
+        html, text = self.check('foo', 'bar')
+        assert ' connect 2 npm packages ' in html
+        assert ' connect 2 npm packages ' in text
+
+    def test_handles_unverified_address_and_one_package(self):
+        html, text = self.check('foo')
+        assert ' <b>alice@example.com</b> and the <b>foo</b> npm package ' in html
+        assert ' alice@example.com and the foo npm package ' in text
+
+    def test_handles_unverified_address_and_multiple_packages(self):
+        html, text = self.check('foo', 'bar')
+        assert ' <b>alice@example.com</b> and 2 npm packages ' in html
+        assert ' alice@example.com and 2 npm packages ' in text
+
+
+class VerificationNotice(VerificationBase):
+
+    def setUp(self):
+        VerificationBase.setUp(self)
+        self.preverify('alice@gratipay.com')
+
+    def check(self, *a, **kw):
+        subject, html, text = VerificationBase.check(self, *a, **kw)
+        assert subject == 'New activity on your account'
+        assert ' notification sent to <b>alice@gratipay.com</b> because' in html
+        assert ' notification sent to alice@gratipay.com because' in text
+        return html, text
+
+    def test_sends_notice_for_new_address(self):
+        html, text = self.check()
+        assert ' connecting <b>alice@example.com</b> to ' in html
+        assert ' connecting alice@example.com to ' in text
+
+    def test_sends_notice_for_verified_address_and_one_package(self):
+        self.preverify()
+        html, text = self.check('foo')
+        assert ' connecting the <b>foo</b> npm package ' in html
+        assert ' connecting the foo npm package to ' in text
+
+    def test_sends_notice_for_verified_address_and_multiple_packages(self):
+        self.preverify()
+        html, text = self.check('foo', 'bar')
+        assert ' connecting 2 npm packages ' in html
+        assert ' connecting 2 npm packages ' in text
+
+    def test_sends_notice_for_unverified_address_and_one_package(self):
+        html, text = self.check('foo')
+        assert ' connecting <b>alice@example.com</b> and the <b>foo</b> npm package ' in html
+        assert ' connecting alice@example.com and the foo npm package ' in text
+
+    def test_sends_notice_for_unverified_address_and_multiple_packages(self):
+        html, text = self.check('foo', 'bar')
+        assert ' connecting <b>alice@example.com</b> and 2 npm packages ' in html
+        assert ' connecting alice@example.com and 2 npm packages ' in text
