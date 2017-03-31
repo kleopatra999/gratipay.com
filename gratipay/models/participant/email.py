@@ -48,7 +48,8 @@ class Email(object):
         verification email for an unverified email address.
 
         :param unicode email: the email address to add
-        :param Package packages: packages to optionally also verify ownership of
+        :param gratipay.models.package.Package packages: packages to optionally
+            also verify ownership of
 
         :returns: ``None``
 
@@ -201,63 +202,107 @@ class Email(object):
                                )
 
 
-    def update_email(self, email):
-        """Set the email address for the participant.
+    def set_primary_email(self, email, cursor=None):
+        """Set the primary email address for the participant.
         """
-        if not getattr(self.get_email(email), 'verified', False):
-            raise EmailNotVerified()
-        username = self.username
-        with self.db.get_cursor() as c:
-            self.app.add_event( c
-                              , 'participant'
-                              , dict(id=self.id, action='set', values=dict(primary_email=email))
-                               )
-            c.run("""
-                UPDATE participants
-                   SET email_address=%(email)s
-                 WHERE username=%(username)s
-            """, locals())
+        if cursor:
+            self._set_primary_email(email, cursor)
+        else:
+            with self.db.get_cursor() as cursor:
+                self._set_primary_email(email, cursor)
         self.set_attributes(email_address=email)
 
 
-    def verify_email(self, email, nonce):
-        if '' in (email, nonce):
+    def _set_primary_email(self, email, cursor):
+        if not getattr(self.get_email(email, cursor), 'verified', False):
+            raise EmailNotVerified()
+        self.app.add_event( cursor
+                          , 'participant'
+                          , dict(id=self.id, action='set', values=dict(primary_email=email))
+                           )
+        cursor.run("""
+            UPDATE participants
+               SET email_address=%(email)s
+             WHERE username=%(username)s
+        """, dict(email=email, username=self.username))
+
+
+    def finish_email_verification(self, email, nonce):
+        if '' in (email.strip(), nonce.strip()):
             return VERIFICATION_MISSING
-        r = self.get_email(email)
-        if r is None:
-            return VERIFICATION_FAILED
-        if r.verified:
-            assert r.nonce is None  # and therefore, order of conditions matters
-            return VERIFICATION_REDUNDANT
-        if not constant_time_compare(r.nonce, nonce):
-            return VERIFICATION_FAILED
-        if (utcnow() - r.verification_start) > EMAIL_HASH_TIMEOUT:
-            return VERIFICATION_EXPIRED
-        try:
-            self.db.run("""
-                UPDATE emails
-                   SET verified=true, verification_end=now(), nonce=NULL
-                 WHERE participant_id=%s
-                   AND address=%s
-                   AND verified IS NULL
-            """, (self.id, email))
-        except IntegrityError:
-            return VERIFICATION_STYMIED
+        with self.db.get_cursor() as cursor:
+            record = self.get_email(email, cursor)
+            if record is None:
+                return VERIFICATION_FAILED
+            packages = self.get_packages_claiming(cursor, nonce)
+            if record.verified and not packages:
+                assert record.nonce is None  # and therefore, order of conditions matters
+                return VERIFICATION_REDUNDANT
+            if not constant_time_compare(record.nonce, nonce):
+                return VERIFICATION_FAILED
+            if (utcnow() - record.verification_start) > EMAIL_HASH_TIMEOUT:
+                return VERIFICATION_EXPIRED
+            try:
+                self.finish_package_claims(cursor, nonce, *packages)
+                self.save_email_address(cursor, email)
+            except IntegrityError:
+                return VERIFICATION_STYMIED
+            return VERIFICATION_SUCCEEDED
 
+
+    def get_packages_claiming(self, cursor, nonce):
+        """Given a nonce, return :py:class:`~gratipay.models.package.Package`
+        objects associated with it.
+        """
+        return cursor.all("""
+            SELECT p.*::packages
+              FROM packages p
+              JOIN claims c
+                ON p.id = c.package_id
+             WHERE c.nonce=%s
+        """, (nonce,))
+
+
+    def save_email_address(self, cursor, address):
+        """Given an email address, modify the database.
+        """
+        cursor.run("""
+            UPDATE emails
+               SET verified=true, verification_end=now(), nonce=NULL
+             WHERE participant_id=%s
+               AND address=%s
+               AND verified IS NULL
+        """, (self.id, address))
         if not self.email_address:
-            self.update_email(email)
-        return VERIFICATION_SUCCEEDED
+            self.set_primary_email(address, cursor)
 
 
-    def get_email(self, email):
+    def finish_package_claims(self, cursor, nonce, *packages):
+        """Create teams if needed and associate them with the packages.
+        """
+        cursor.run('DELETE FROM claims WHERE nonce=%s', (nonce,))
+        package_ids = []
+        for package in packages:
+            package.get_or_create_linked_team(cursor, self)
+            package_ids.append(package.id)
+        self.app.add_event( cursor
+                          , 'participant'
+                          , dict( id=self.id
+                                , action='finish-claim'
+                                , values=dict(package_ids=package_ids)
+                                 )
+                               )
+
+
+    def get_email(self, address, cursor=None):
         """Return a record for a single email address on file for this participant.
         """
-        return self.db.one("""
+        return (cursor or self.db).one("""
             SELECT *
               FROM emails
              WHERE participant_id=%s
                AND address=%s
-        """, (self.id, email))
+        """, (self.id, address))
 
 
     def get_emails(self):

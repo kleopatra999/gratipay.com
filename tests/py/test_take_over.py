@@ -153,7 +153,8 @@ class TestTakeOver(Harness):
         TT = self.db.one("SELECT id FROM countries WHERE code='TT'")
         alice = self.make_participant('alice')
         alice.start_email_verification('alice@example.com')
-        alice.verify_email('alice@example.com', alice.get_email('alice@example.com').nonce)
+        nonce = alice.get_email('alice@example.com').nonce
+        alice.finish_email_verification('alice@example.com', nonce)
         alice.store_identity_info(TT, 'nothing-enforced', {})
 
         bob_github = self.make_elsewhere('github', 2, 'bob')
@@ -169,7 +170,7 @@ class TestTakeOver(Harness):
         bob_github = self.make_elsewhere('github', 2, 'bob')
         bob = bob_github.opt_in('bob')[0].participant
         bob.start_email_verification('bob@example.com')
-        bob.verify_email('bob@example.com', bob.get_email('bob@example.com').nonce)
+        bob.finish_email_verification('bob@example.com', bob.get_email('bob@example.com').nonce)
         bob.store_identity_info(TT, 'nothing-enforced', {})
 
         pytest.raises(WontTakeOverWithIdentities, alice.take_over, bob_github)
@@ -187,11 +188,13 @@ class TestTakeOver(Harness):
         alice.start_email_verification('alice@example.com')
         alice.start_email_verification('alice@example.net')
         alice.start_email_verification('alice@example.org')
-        alice.verify_email('alice@example.org', alice.get_email('alice@example.org').nonce)
+        nonce = alice.get_email('alice@example.org').nonce
+        alice.finish_email_verification('alice@example.org', nonce)
         bob_github = self.make_elsewhere('github', 2, 'bob')
         bob = bob_github.opt_in('bob')[0].participant
         bob.start_email_verification('alice@example.com')
-        bob.verify_email('alice@example.com', bob.get_email('alice@example.com').nonce)
+        nonce = bob.get_email('alice@example.com').nonce
+        bob.finish_email_verification('alice@example.com', nonce)
         bob.start_email_verification('alice@example.net')
         bob.start_email_verification('bob@example.net')
         alice.take_over(bob_github, have_confirmation=True)
