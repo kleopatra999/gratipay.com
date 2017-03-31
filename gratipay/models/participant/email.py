@@ -196,23 +196,29 @@ class Email(object):
                                )
 
 
-    def update_email(self, email):
-        """Set the email address for the participant.
+    def set_primary_email(self, email, cursor=None):
+        """Set the primary email address for the participant.
         """
-        if not getattr(self.get_email(email), 'verified', False):
-            raise EmailNotVerified()
-        username = self.username
-        with self.db.get_cursor() as c:
-            self.app.add_event( c
-                              , 'participant'
-                              , dict(id=self.id, action='set', values=dict(primary_email=email))
-                               )
-            c.run("""
-                UPDATE participants
-                   SET email_address=%(email)s
-                 WHERE username=%(username)s
-            """, locals())
+        if cursor:
+            self._set_primary_email(email, cursor)
+        else:
+            with self.db.get_cursor() as cursor:
+                self._set_primary_email(email, cursor)
         self.set_attributes(email_address=email)
+
+
+    def _set_primary_email(self, email, cursor):
+        if not getattr(self.get_email(email, cursor), 'verified', False):
+            raise EmailNotVerified()
+        self.app.add_event( cursor
+                          , 'participant'
+                          , dict(id=self.id, action='set', values=dict(primary_email=email))
+                           )
+        cursor.run("""
+            UPDATE participants
+               SET email_address=%(email)s
+             WHERE username=%(username)s
+        """, dict(email=email, username=self.username))
 
 
     def verify_email(self, email, nonce):
@@ -232,9 +238,6 @@ class Email(object):
             self.finish_email_verification(email, nonce)
         except IntegrityError:
             return VERIFICATION_STYMIED
-
-        if not self.email_address:
-            self.update_email(email)
         return VERIFICATION_SUCCEEDED
 
 
@@ -249,12 +252,14 @@ class Email(object):
                    AND address=%s
                    AND verified IS NULL
             """, (self.id, email))
+            if not self.email_address:
+                self.set_primary_email(email, c)
 
 
-    def get_email(self, email):
+    def get_email(self, email, cursor=None):
         """Return a record for a single email address on file for this participant.
         """
-        return self.db.one("""
+        return (cursor or self.db).one("""
             SELECT *
               FROM emails
              WHERE participant_id=%s
