@@ -25,7 +25,7 @@ class Alice(QueuedEmailHarness):
     def add(self, participant, address, _flush=False):
         participant.start_email_verification(address)
         nonce = participant.get_email(address).nonce
-        r = participant.verify_email(address, nonce)
+        r = participant.finish_email_verification(address, nonce)
         assert r == _email.VERIFICATION_SUCCEEDED
         if _flush:
             self.app.email_queue.flush()
@@ -52,7 +52,7 @@ class TestEndpoints(Alice):
             response.render_body({'_': lambda a: a})
         return response
 
-    def verify_email(self, email, nonce, username='alice', should_fail=False):
+    def finish_email_verification(self, email, nonce, username='alice', should_fail=False):
         # Email address is encoded in url.
         url = '/~%s/emails/verify.html?email2=%s&nonce=%s'
         url %= (username, encode_for_querystring(email), nonce)
@@ -62,7 +62,7 @@ class TestEndpoints(Alice):
     def verify_and_change_email(self, old_email, new_email, username='alice', _flush=True):
         self.hit_email_spt('add-email', old_email)
         nonce = P(username).get_email(old_email).nonce
-        self.verify_email(old_email, nonce)
+        self.finish_email_verification(old_email, nonce)
         self.hit_email_spt('add-email', new_email)
         if _flush:
             self.app.email_queue.flush()
@@ -129,15 +129,15 @@ class TestEndpoints(Alice):
         assert 'too quickly' in response.body
 
     def test_verify_email_without_adding_email(self):
-        response = self.verify_email('', 'sample-nonce')
+        response = self.finish_email_verification('', 'sample-nonce')
         assert 'Bad Info' in response.body
 
     def test_verify_email_wrong_nonce(self):
         self.hit_email_spt('add-email', 'alice@example.com')
         nonce = 'fake-nonce'
-        r = self.alice.verify_email('alice@gratipay.com', nonce)
+        r = self.alice.finish_email_verification('alice@gratipay.com', nonce)
         assert r == _email.VERIFICATION_FAILED
-        self.verify_email('alice@example.com', nonce)
+        self.finish_email_verification('alice@example.com', nonce)
         expected = None
         actual = P('alice').email_address
         assert expected == actual
@@ -146,8 +146,8 @@ class TestEndpoints(Alice):
         address = 'alice@example.com'
         self.hit_email_spt('add-email', address)
         nonce = self.alice.get_email(address).nonce
-        r = self.alice.verify_email(address, nonce)
-        r = self.alice.verify_email(address, nonce)
+        r = self.alice.finish_email_verification(address, nonce)
+        r = self.alice.finish_email_verification(address, nonce)
         assert r == _email.VERIFICATION_REDUNDANT
 
     def test_verify_email_expired_nonce(self):
@@ -159,15 +159,15 @@ class TestEndpoints(Alice):
              WHERE participant_id = %s;
         """, (self.alice.id,))
         nonce = self.alice.get_email(address).nonce
-        r = self.alice.verify_email(address, nonce)
+        r = self.alice.finish_email_verification(address, nonce)
         assert r == _email.VERIFICATION_EXPIRED
         actual = P('alice').email_address
         assert actual == None
 
-    def test_verify_email(self):
+    def test_finish_email_verification(self):
         self.hit_email_spt('add-email', 'alice@example.com')
         nonce = self.alice.get_email('alice@example.com').nonce
-        self.verify_email('alice@example.com', nonce)
+        self.finish_email_verification('alice@example.com', nonce)
         expected = 'alice@example.com'
         actual = P('alice').email_address
         assert expected == actual
@@ -197,7 +197,7 @@ class TestEndpoints(Alice):
     def test_verify_email_after_update(self):
         self.verify_and_change_email('alice@example.com', 'alice@example.net')
         nonce = self.alice.get_email('alice@example.net').nonce
-        self.verify_email('alice@example.net', nonce)
+        self.finish_email_verification('alice@example.net', nonce)
         expected = 'alice@example.com'
         actual = P('alice').email_address
         assert expected == actual
@@ -296,7 +296,7 @@ class TestFunctions(Alice):
         with self.assertRaises(EmailTaken):
             bob.start_email_verification('alice@gratipay.com')
             nonce = bob.get_email('alice@gratipay.com').nonce
-            bob.verify_email('alice@gratipay.com', nonce)
+            bob.finish_email_verification('alice@gratipay.com', nonce)
 
         email_alice = P('alice').email_address
         assert email_alice == 'alice@gratipay.com'
@@ -592,7 +592,7 @@ class VerificationBase(Alice):
     def preverify(self, address='alice@example.com'):
         self.alice.start_email_verification(address)
         nonce = self.alice.get_email(address).nonce
-        self.alice.verify_email(address, nonce)
+        self.alice.finish_email_verification(address, nonce)
 
 
 class VerificationMessage(VerificationBase):
@@ -677,3 +677,38 @@ class VerificationNotice(VerificationBase):
         html, text = self.check('foo', 'bar')
         assert ' connecting <b>alice@example.com</b> and 2 npm packages ' in html
         assert ' connecting alice@example.com and 2 npm packages ' in text
+
+
+class FinishEmailVerification(VerificationBase):
+
+    def start(self, address, *package_names):
+        packages = [self.make_package(name=name, emails=[address]) for name in package_names]
+        self.alice.start_email_verification(address, *packages)
+        return self.alice.get_email(address).nonce
+
+    def test_handles_new_address(self):
+        address = 'alice@example.com'
+        assert self.alice.email_address is None
+        self.alice.finish_email_verification(address, self.start(address))
+        assert self.alice.email_address == P('alice').email_address == address
+
+    def test_handles_verified_address_and_no_packages(self):
+        raise NotImplementedError  # should error
+
+    def test_handles_verified_address_and_one_package(self):
+        self.preverify()
+        address = 'alice@example.com'
+        assert self.alice.email_address == address
+        self.alice.finish_email_verification(address, self.start(address, 'foo'))
+        assert self.alice.email_address == P('alice').email_address == address
+        raise NotImplementedError  # assert we connect the package
+
+    def test_handles_verified_address_and_multiple_packages(self):
+        self.preverify()
+        raise NotImplementedError
+
+    def test_handles_unverified_address_and_one_package(self):
+        raise NotImplementedError
+
+    def test_handles_unverified_address_and_multiple_packages(self):
+        raise NotImplementedError

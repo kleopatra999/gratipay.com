@@ -221,42 +221,74 @@ class Email(object):
         """, dict(email=email, username=self.username))
 
 
-    def verify_email(self, email, nonce):
+    def finish_email_verification(self, email, nonce):
         if '' in (email, nonce):
             return VERIFICATION_MISSING
-        r = self.get_email(email)
-        if r is None:
-            return VERIFICATION_FAILED
-        if r.verified:
-            assert r.nonce is None  # and therefore, order of conditions matters
-            return VERIFICATION_REDUNDANT
-        if not constant_time_compare(r.nonce, nonce):
-            return VERIFICATION_FAILED
-        if (utcnow() - r.verification_start) > EMAIL_HASH_TIMEOUT:
-            return VERIFICATION_EXPIRED
-        try:
-            self.finish_email_verification(email, nonce)
-        except IntegrityError:
-            return VERIFICATION_STYMIED
-        return VERIFICATION_SUCCEEDED
-
-
-    def finish_email_verification(self, email, nonce):
-        """Given an email address and nonce, modify the database.
-        """
         with self.db.get_cursor() as c:
-            c.run("""
-                UPDATE emails
-                   SET verified=true, verification_end=now(), nonce=NULL
-                 WHERE participant_id=%s
-                   AND address=%s
-                   AND verified IS NULL
-            """, (self.id, email))
-            if not self.email_address:
-                self.set_primary_email(email, c)
+            r = self.get_email(email, c)
+            if r is None:
+                return VERIFICATION_FAILED
+            packages = self.get_packages(c, nonce)
+            if r.verified and not packages:
+                assert r.nonce is None  # and therefore, order of conditions matters
+                return VERIFICATION_REDUNDANT
+            if not constant_time_compare(r.nonce, nonce):
+                return VERIFICATION_FAILED
+            if (utcnow() - r.verification_start) > EMAIL_HASH_TIMEOUT:
+                return VERIFICATION_EXPIRED
+            try:
+                self.save_email_address(c, email)
+                self.finish_package_claims(c, *packages)
+            except IntegrityError:
+                return VERIFICATION_STYMIED
+            return VERIFICATION_SUCCEEDED
 
 
-    def get_email(self, email, cursor=None):
+    def get_packages(self, cursor, nonce):
+        """Given a nonce, return :py:class:`Package` objects associated with it.
+        """
+        return cursor.all("""
+            SELECT *
+              FROM packages p
+              JOIN claims c
+                ON p.id = c.package_id
+             WHERE c.nonce=%s
+        """, (nonce,))
+
+
+    def save_email_address(self, cursor, address):
+        """Given an email address, modify the database.
+        """
+        cursor.run("""
+            UPDATE emails
+               SET verified=true, verification_end=now(), nonce=NULL
+             WHERE participant_id=%s
+               AND address=%s
+               AND verified IS NULL
+        """, (self.id, address))
+        if not self.email_address:
+            self.set_primary_email(address, cursor)
+
+
+    def finish_package_claims(self, cursor, *packages):
+        """Create stub projects if needed and associate them with the packages.
+        """
+        for package in packages:
+
+            # get/create a project for the package
+            #project = None
+
+            # set ownership of the project
+
+            # associate the two
+            #package.team_id = project.id
+
+            # log an event
+
+            pass
+
+
+    def get_email(self, address, cursor=None):
         """Return a record for a single email address on file for this participant.
         """
         return (cursor or self.db).one("""
@@ -264,7 +296,7 @@ class Email(object):
               FROM emails
              WHERE participant_id=%s
                AND address=%s
-        """, (self.id, email))
+        """, (self.id, address))
 
 
     def get_emails(self):
