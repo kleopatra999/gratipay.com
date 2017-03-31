@@ -229,19 +229,26 @@ class Email(object):
         if (utcnow() - r.verification_start) > EMAIL_HASH_TIMEOUT:
             return VERIFICATION_EXPIRED
         try:
-            self.db.run("""
-                UPDATE emails
-                   SET verified=true, verification_end=now(), nonce=NULL
-                 WHERE participant_id=%s
-                   AND address=%s
-                   AND verified IS NULL
-            """, (self.id, email))
+            self.finish_email_verification(email, nonce)
         except IntegrityError:
             return VERIFICATION_STYMIED
 
         if not self.email_address:
             self.update_email(email)
         return VERIFICATION_SUCCEEDED
+
+
+    def finish_email_verification(self, email, nonce):
+        """Given an email address and nonce, modify the database.
+        """
+        with self.db.get_cursor() as c:
+            c.run("""
+                UPDATE emails
+                   SET verified=true, verification_end=now(), nonce=NULL
+                 WHERE participant_id=%s
+                   AND address=%s
+                   AND verified IS NULL
+            """, (self.id, email))
 
 
     def get_email(self, email):
