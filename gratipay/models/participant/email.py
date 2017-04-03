@@ -48,7 +48,8 @@ class Email(object):
         verification email for an unverified email address.
 
         :param unicode email: the email address to add
-        :param Package packages: packages to optionally also verify ownership of
+        :param gratipay.models.package.Package packages: packages to optionally
+            also verify ownership of
 
         :returns: ``None``
 
@@ -228,7 +229,7 @@ class Email(object):
             r = self.get_email(email, c)
             if r is None:
                 return VERIFICATION_FAILED
-            packages = self.get_packages(c, nonce)
+            packages = self.get_packages_claiming(c, nonce)
             if r.verified and not packages:
                 assert r.nonce is None  # and therefore, order of conditions matters
                 return VERIFICATION_REDUNDANT
@@ -244,11 +245,12 @@ class Email(object):
             return VERIFICATION_SUCCEEDED
 
 
-    def get_packages(self, cursor, nonce):
-        """Given a nonce, return :py:class:`Package` objects associated with it.
+    def get_packages_claiming(self, cursor, nonce):
+        """Given a nonce, return :py:class:`~gratipay.models.package.Package`
+        objects associated with it.
         """
         return cursor.all("""
-            SELECT *
+            SELECT p.*::packages
               FROM packages p
               JOIN claims c
                 ON p.id = c.package_id
@@ -271,21 +273,19 @@ class Email(object):
 
 
     def finish_package_claims(self, cursor, *packages):
-        """Create stub projects if needed and associate them with the packages.
+        """Create teams if needed and associate them with the packages.
         """
+        package_ids = []
         for package in packages:
-
-            # get/create a project for the package
-            #project = None
-
-            # set ownership of the project
-
-            # associate the two
-            #package.team_id = project.id
-
-            # log an event
-
-            pass
+            package.get_or_create_linked_team(cursor, self)
+            package_ids.append(package.id)
+        self.app.add_event( cursor
+                          , 'participant'
+                          , dict( id=self.id
+                                , action='finish-claim'
+                                , values=dict(package_ids=package_ids)
+                                 )
+                               )
 
 
     def get_email(self, address, cursor=None):
