@@ -88,3 +88,4 @@ class NegativeBalance(Exception):
 
 class NotWhitelisted(Exception): pass
 class NoPackages(Exception): pass
+class OutOfOptions(Exception): pass

@@ -4,6 +4,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import uuid
 
 from gratipay.models.team import Team
+from gratipay.exceptions import OutOfOptions
 from postgres.orm import Model
 
 
@@ -36,6 +37,13 @@ class Package(Model):
         return self.id != other.id
 
 
+    @property
+    def url_path(self):
+        """The path part of the URL for this package on Gratipay.
+        """
+        return '/on/{}/{}/'.format(self.package_manager, self.name)
+
+
     # Constructors
     # ============
 
@@ -65,11 +73,20 @@ class Package(Model):
     def ensure_team(self, cursor, owner):
         """Given a db cursor and :py:class:`Participant`, insert into ``teams`` if need be.
         """
-        team = self._load_team(cursor)
-        if not team:
-            slug = str(uuid.uuid4()).lower()
+        if self._load_team(cursor):
+            return
+
+        def slug_options():
+            yield self.name
+            for i in range(1, 10):
+                yield '{}-{}'.format(self.name, i)
+            yield str(uuid.uuid4()).lower()
+
+        for slug in slug_options():
+            if cursor.one('SELECT count(*) FROM teams WHERE slug=%s', (slug,)) > 0:
+                continue
             team = Team.insert( slug=slug
-                              , slug_lower=slug
+                              , slug_lower=slug.lower()
                               , name=slug
                               , homepage=''
                               , product_or_service=''
@@ -78,7 +95,9 @@ class Package(Model):
                                )
             cursor.run('INSERT INTO teams_to_packages (team_id, package_id) '
                        'VALUES (%s, %s)', (team.id, self.id))
-        return team
+            break
+        else:
+            raise OutOfOptions()
 
 
     def _load_team(self, cursor):
