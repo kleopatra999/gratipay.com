@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-from gratipay.models.package import NPM
+from gratipay.models.package import NPM, Package
 from gratipay.testing import Harness
 
 
@@ -35,3 +35,17 @@ class TestClaimingWorkflow(Harness):
         self.make_participant('bob', claimed_time='now')
         body = self.client.GET('/on/npm/bar/', auth_as='bob').body
         assert "didn&#39;t find any email addresses" in body
+
+
+    def claim_package(self):
+        foo = Package.from_names('npm', 'foo')
+        alice = self.make_participant('alice', claimed_time='now')
+        alice.start_email_verification('alice@example.com', foo)
+        nonce = alice.get_email('alice@example.com').nonce
+        alice.finish_email_verification('alice@example.com', nonce)
+        assert alice.get_teams()[0].package == foo
+
+    def test_anon_gets_project_page_if_claimed(self):
+        self.claim_package()
+        body = self.client.GET('/on/npm/foo/').body
+        assert 'CLAIMED!!!!' in body

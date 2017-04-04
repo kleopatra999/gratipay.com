@@ -13,56 +13,8 @@ page_id = "package"
 suppress_sidebar = True
 url = 'https://npmjs.com/package/' + package.name
 [---]
-{% extends "templates/base.html" %}
-
-{% block banner %}
-<a class="elsewhere" href="{{ url }}">
-    <div class="avatar text">
-        <div class="bg"></div>
-        <p>{{ package.description }}</p>
-        <img class="platform" src="{{ website.asset('npm-n.png') }}" />
-    </div>
-    {{ super () }}
-</a>
-{% endblock %}
-
-{% block scripts %}
-<script>
-    $(document).ready(function() {
-        $('button.send').on('click', Gratipay.packages.post);
-    });
-</script>
-{{ super() }}
-{% endblock %}
-
-{% block content %}
-<h2>{{ _( '{npm_package} has not been claimed on Gratipay.'
-        , npm_package=('<a href="' + url + '">' + 'npm/' + package_name + '</a>')|safe
-         ) }}</h2>
-{% if user.ANON %}
-    <p>{{ _('Is this yours? You can claim it on Gratipay with a couple clicks:') }}</p>
-    {% include "templates/sign-in-using.html" %}
-
-    <h2>{{ _('What is Gratipay?') }}</h2>
-    <p>{{ _('Gratipay helps companies and others pay for open source.') }}
-    <a href="/about/">{{ _("Learn more") }}</a></p>
+{% if package.team %}
+{% extends "templates/package-claimed.html" %}
 {% else %}
-    <p>{{ _( 'Is this yours? You can claim it on Gratipay using any email address {a}on file{_a} in the maintainers field in the npm registry.'
-           , a=('<a href="https://registry.npmjs.com/' + package.name + '">')|safe
-           , _a='</a>'|safe
-            ) }}
-    {% if len(package.emails) == 0 %}
-    <p class="sorry">{{ _("Sorry, we didn't find any email addresses on file.") }}</p>
-    {% else %}
-    <input type="hidden" name="package_id" value="{{ package.id }}">
-    <ul class="emails">
-        {% for i, email in enumerate(package.emails) %}
-        <li><input type="radio" name="email" value="{{ email }}" id="email-{{i}}"
-                   {% if i == 0 %}checked{% endif %}>
-            <label for="email-{{ i }}">{{ email }}</a></li>
-        {% endfor %}
-    </ul>
-    <button type="submit" class="send selected">{{ _('Send confirmation link') }}</button>
-    {% endif %}
+{% extends "templates/package-unclaimed.html" %}
 {% endif %}
-{% endblock %}
