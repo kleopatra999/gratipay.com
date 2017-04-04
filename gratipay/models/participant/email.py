@@ -223,23 +223,23 @@ class Email(object):
 
 
     def finish_email_verification(self, email, nonce):
-        if '' in (email, nonce):
+        if '' in (email.strip(), nonce.strip()):
             return VERIFICATION_MISSING
-        with self.db.get_cursor() as c:
-            r = self.get_email(email, c)
-            if r is None:
+        with self.db.get_cursor() as cursor:
+            record = self.get_email(email, cursor)
+            if record is None:
                 return VERIFICATION_FAILED
-            packages = self.get_packages_claiming(c, nonce)
-            if r.verified and not packages:
-                assert r.nonce is None  # and therefore, order of conditions matters
+            packages = self.get_packages_claiming(cursor, nonce)
+            if record.verified and not packages:
+                assert record.nonce is None  # and therefore, order of conditions matters
                 return VERIFICATION_REDUNDANT
-            if not constant_time_compare(r.nonce, nonce):
+            if not constant_time_compare(record.nonce, nonce):
                 return VERIFICATION_FAILED
-            if (utcnow() - r.verification_start) > EMAIL_HASH_TIMEOUT:
+            if (utcnow() - record.verification_start) > EMAIL_HASH_TIMEOUT:
                 return VERIFICATION_EXPIRED
             try:
-                self.save_email_address(c, email)
-                self.finish_package_claims(c, *packages)
+                self.finish_package_claims(cursor, nonce, *packages)
+                self.save_email_address(cursor, email)
             except IntegrityError:
                 return VERIFICATION_STYMIED
             return VERIFICATION_SUCCEEDED
@@ -272,9 +272,10 @@ class Email(object):
             self.set_primary_email(address, cursor)
 
 
-    def finish_package_claims(self, cursor, *packages):
+    def finish_package_claims(self, cursor, nonce, *packages):
         """Create teams if needed and associate them with the packages.
         """
+        cursor.run('DELETE FROM claims WHERE nonce=%s', (nonce,))
         package_ids = []
         for package in packages:
             package.get_or_create_linked_team(cursor, self)

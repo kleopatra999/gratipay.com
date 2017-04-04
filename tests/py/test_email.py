@@ -2,8 +2,8 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import json
 import sys
-
 import urllib
+
 from pytest import raises
 
 from gratipay.exceptions import CannotRemovePrimaryEmail, EmailTaken, EmailNotVerified
@@ -11,6 +11,7 @@ from gratipay.exceptions import TooManyEmailAddresses, Throttled, EmailAlreadyVe
 from gratipay.exceptions import EmailNotOnFile, ProblemChangingEmail
 from gratipay.testing import P, Harness
 from gratipay.testing.email import QueuedEmailHarness, SentEmailHarness
+from gratipay.models.package import Package
 from gratipay.models.participant import email as _email
 from gratipay.utils import encode_for_querystring
 from gratipay.cli import queue_branch_email as _queue_branch_email
@@ -167,10 +168,18 @@ class TestEndpoints(Alice):
     def test_finish_email_verification(self):
         self.hit_email_spt('add-email', 'alice@example.com')
         nonce = self.alice.get_email('alice@example.com').nonce
-        self.finish_email_verification('alice@example.com', nonce)
-        expected = 'alice@example.com'
-        actual = P('alice').email_address
-        assert expected == actual
+        assert self.finish_email_verification('alice@example.com', nonce).code == 200
+        assert P('alice').email_address == 'alice@example.com'
+
+    def test_empty_email_results_in_missing(self):
+        for empty in ('', '    '):
+            result = self.alice.finish_email_verification(empty, 'foobar')
+            assert result == _email.VERIFICATION_MISSING
+
+    def test_empty_nonce_results_in_missing(self):
+        for empty in ('', '    '):
+            result = self.alice.finish_email_verification('foobar', empty)
+            assert result == _email.VERIFICATION_MISSING
 
     def test_email_verification_is_backwards_compatible(self):
         """Test email verification still works with unencoded email in verification link.
@@ -679,36 +688,59 @@ class VerificationNotice(VerificationBase):
         assert ' connecting alice@example.com and 2 npm packages ' in text
 
 
-class FinishEmailVerification(VerificationBase):
+class PackageLinking(VerificationBase):
+
+    address = 'alice@example.com'
 
     def start(self, address, *package_names):
         packages = [self.make_package(name=name, emails=[address]) for name in package_names]
         self.alice.start_email_verification(address, *packages)
         return self.alice.get_email(address).nonce
 
-    def test_handles_new_address(self):
-        address = 'alice@example.com'
+    def check(self, *package_names):
+        nonce = self.start(self.address, *package_names)
+        retval = self.alice.finish_email_verification(self.address, nonce)
+        assert retval == _email.VERIFICATION_SUCCEEDED
+        assert self.alice.email_address == P('alice').email_address == self.address
+        for name in package_names:
+            package = Package.from_names('npm', name)
+            assert package.team.package == package
+
+
+    def test_preverify_preverifies(self):
         assert self.alice.email_address is None
-        self.alice.finish_email_verification(address, self.start(address))
-        assert self.alice.email_address == P('alice').email_address == address
-
-    def test_handles_verified_address_and_no_packages(self):
-        raise NotImplementedError  # should error
-
-    def test_handles_verified_address_and_one_package(self):
         self.preverify()
-        address = 'alice@example.com'
-        assert self.alice.email_address == address
-        self.alice.finish_email_verification(address, self.start(address, 'foo'))
-        assert self.alice.email_address == P('alice').email_address == address
-        raise NotImplementedError  # assert we connect the package
+        assert self.alice.email_address == self.address
 
-    def test_handles_verified_address_and_multiple_packages(self):
+
+    def test_unverified_address_and_no_packages_succeeds(self):
+        self.check()
+
+    def test_unverified_address_and_one_package_succeeds(self):
+        self.check('foo')
+
+    def test_unverified_address_and_multiple_packages_succeeds(self):
+        self.check('foo', 'bar')
+
+    def test_verified_address_and_no_packages_is_a_no_go(self):
         self.preverify()
-        raise NotImplementedError
+        raises(EmailAlreadyVerified, self.check)
 
-    def test_handles_unverified_address_and_one_package(self):
-        raise NotImplementedError
+    def test_verified_address_and_one_package_succeeds(self):
+        self.preverify()
+        self.check('foo')
 
-    def test_handles_unverified_address_and_multiple_packages(self):
-        raise NotImplementedError
+    def test_verified_address_and_multiple_packages_succeeds(self):
+        self.preverify()
+        self.check('foo', 'bar')
+
+
+    def test_while_we_are_at_it_that_packages_have_unique_teams_that_survive_comparison(self):
+        self.test_verified_address_and_multiple_packages_succeeds()
+
+        foo = Package.from_names('npm', 'foo')
+        bar = Package.from_names('npm', 'bar')
+
+        assert foo.team == foo.team
+        assert bar.team == bar.team
+        assert foo.team != bar.team
