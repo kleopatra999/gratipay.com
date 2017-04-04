@@ -735,6 +735,25 @@ class PackageLinking(VerificationBase):
         self.check('foo', 'bar')
 
 
+    def test_bob_cannot_steal_a_package_claim_from_alice(self):
+        foo = self.make_package()
+        self.alice.start_email_verification(self.address, foo)
+        nonce = self.alice.get_email(self.address).nonce
+
+        # u so bad bob!
+        bob = self.make_participant('bob', claimed_time='now')
+        bob.start_email_verification(self.address, foo)
+        result = bob.finish_email_verification(self.address, nonce)  # using alice's nonce, even!
+        assert result == _email.VERIFICATION_FAILED
+        assert len(bob.get_teams()) == 0
+
+        result = self.alice.finish_email_verification(self.address, nonce)
+        assert result == _email.VERIFICATION_SUCCEEDED
+        teams = self.alice.get_teams()
+        assert len(teams) == 1
+        assert teams[0].package == foo
+
+
     def test_while_we_are_at_it_that_packages_have_unique_teams_that_survive_comparison(self):
         self.test_verified_address_and_multiple_packages_succeeds()
 
