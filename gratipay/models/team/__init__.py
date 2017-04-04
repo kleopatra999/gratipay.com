@@ -308,12 +308,20 @@ class Team(Model, Available, Closing, Membership, Package, Takes, TipMigration):
                            , ndistributing_to=r.ndistributing_to
                             )
 
+
+    def get_ui_state(self, user):
+        suppress_sidebar = not(self.is_approved or user.ADMIN)
+        is_team_owner = not user.ANON and self.owner == user.participant.username
+        return suppress_sidebar, is_team_owner
+
+
     @property
     def status(self):
         return { None: 'unreviewed'
                , False: 'rejected'
                , True: 'approved'
                 }[self.is_approved]
+
 
     def to_dict(self):
         return {

@@ -8,15 +8,16 @@ from gratipay.models.package import Package
 
 package_name = request.path['package']
 package = Package.from_names('npm', package_name)
-team = package.team
-is_team_owner = not user.ANON and team and team.owner == user.participant.username
 if package is None:
     raise Response(404)
+elif package.team:
+    team = package.team
+    suppress_sidebar, is_team_owner = team.get_ui_state(user)
+else:
+    page_id = "package"
+    suppress_sidebar = True
+    url = 'https://npmjs.com/package/' + package.name
 banner = package_name
-page_id = "package"
-suppress_sidebar = True
-url = 'https://npmjs.com/package/' + package.name
-
 [---]
 {% if package.team %}
 {% extends "templates/project.html" %}

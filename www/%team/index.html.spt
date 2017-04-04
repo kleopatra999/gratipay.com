@@ -9,8 +9,7 @@ from gratipay.utils import get_team, markdown, truncate
 
 team = get_team(state)
 banner = name = team.name
-suppress_sidebar = not(team.is_approved or user.ADMIN)
-is_team_owner = not user.ANON and team.owner == user.participant.username
+suppress_sidebar, is_team_owner = team.get_ui_state(user)
 
 [-----------------------------------------------------------------------------]
-{% include "templates/project.html" %"}
+{% include "templates/project.html" %}
