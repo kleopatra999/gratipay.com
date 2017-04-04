@@ -1,20 +1,25 @@
 import requests
 
 from aspen import Response
-from gratipay.utils import markdown
+from gratipay.utils import get_team, markdown, truncate
 from gratipay.models.package import Package
+
 [---]
+
 package_name = request.path['package']
 package = Package.from_names('npm', package_name)
+team = package.team
+is_team_owner = not user.ANON and team and team.owner == user.participant.username
 if package is None:
     raise Response(404)
 banner = package_name
 page_id = "package"
 suppress_sidebar = True
 url = 'https://npmjs.com/package/' + package.name
+
 [---]
 {% if package.team %}
-{% extends "templates/package-claimed.html" %}
+{% extends "templates/project.html" %}
 {% else %}
-{% extends "templates/package-unclaimed.html" %}
+{% extends "templates/package.html" %}
 {% endif %}

@@ -48,4 +48,4 @@ class TestClaimingWorkflow(Harness):
     def test_anon_gets_project_page_if_claimed(self):
         self.claim_package()
         body = self.client.GET('/on/npm/foo/').body
-        assert 'CLAIMED!!!!' in body
+        assert 'owned by' in body
