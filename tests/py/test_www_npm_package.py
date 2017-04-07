@@ -5,7 +5,7 @@ from gratipay.models.package import NPM, Package
 from gratipay.testing import Harness
 
 
-class TestClaimingWorkflow(Harness):
+class Tests(Harness):
 
     def setUp(self):
         self.make_package()
@@ -43,7 +43,9 @@ class TestClaimingWorkflow(Harness):
         alice.start_email_verification('alice@example.com', foo)
         nonce = alice.get_email('alice@example.com').nonce
         alice.finish_email_verification('alice@example.com', nonce)
-        assert alice.get_teams()[0].package == foo
+        team = alice.get_teams()[0]
+        assert team.package == foo
+        return team.slug
 
     def test_anon_gets_project_page_if_claimed(self):
         self.claim_package()
@@ -51,8 +53,7 @@ class TestClaimingWorkflow(Harness):
         assert 'owned by' in body
 
     def test_project_page_redirects_to_package_if_claimed(self):
-        self.claim_package()
-        deadbeef = self.db.one('select slug from teams')
+        deadbeef = self.claim_package()
         response = self.client.GxT('/{}/'.format(deadbeef))
         assert response.code == 302
         assert response.headers['Location'] == '/on/npm/foo/'

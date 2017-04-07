@@ -34,6 +34,15 @@ def dict_to_querystring(mapping):
 
 
 def _munge(website, request, url_prefix, fs_prefix):
+    """Given website and requests objects along with URL and filesystem
+    prefixes, redirect or modify the request. The idea here is that sometimes
+    for various reasons the dispatcher can't handle a mapping, so this is a
+    hack to rewrite the URL to help the dispatcher map to the filesystem.
+
+    If you access the filesystem version directly through the web, we redirect
+    you to the URL version. If you access the URL version as desired, then we
+    rewrite so we can find it on the filesystem.
+    """
     if request.path.raw.startswith(fs_prefix):
         to = url_prefix + request.path.raw[len(fs_prefix):]
         if request.qs.raw:
@@ -113,7 +122,7 @@ def get_participant(state, restrict=True, resolve_unclaimed=True):
 
 
 def get_team(state):
-    """Given a Request, raise Response or return Team.
+    """Given a state dict, raise Response or return Team.
     """
     redirect = state['website'].redirect
     request = state['request']
