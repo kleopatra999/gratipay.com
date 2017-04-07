@@ -8,6 +8,8 @@ from gratipay.utils import get_team, markdown, truncate
 [-----------------------------------------------------------------------------]
 
 team = get_team(state)
+if team.package:
+    website.redirect(team.package.url_path)
 banner = name = team.name
 suppress_sidebar, is_team_owner = team.get_ui_state(user)
 

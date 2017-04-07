@@ -36,6 +36,13 @@ class Package(Model):
         return self.id != other.id
 
 
+    @property
+    def url_path(self):
+        """The path part of the URL for this package on Gratipay.
+        """
+        return '/on/{}/{}/'.format(self.package_manager, self.name)
+
+
     # Constructors
     # ============
 
