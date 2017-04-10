@@ -102,8 +102,8 @@ class Package(Model):
             team = Team.insert( slug=slug
                               , slug_lower=slug.lower()
                               , name=slug
-                              , homepage=''
-                              , product_or_service=''
+                              , homepage='https://www.npmjs.com/package/' + self.name
+                              , product_or_service=self.description
                               , owner=owner
                               , _cursor=cursor
                                )

@@ -74,3 +74,11 @@ class Linking(Harness):
         self.make_team(name='deadbeef')             # take `deadbeef`(!)
         uuid.uuid4.return_value = 'deadbeef'        # force-try `deadbeef`
         raises(OutOfOptions, self.link)
+
+    def test_linked_team_takes_package_description(self):
+        _, _, team = self.link()
+        assert team.product_or_service == 'Foo fooingly.'
+
+    def test_linked_team_has_remote_package_url_as_homepage(self):
+        _, _, team = self.link()
+        assert team.homepage == 'https://www.npmjs.com/package/foo'
