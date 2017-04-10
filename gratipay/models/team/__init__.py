@@ -180,8 +180,11 @@ class Team(Model, Available, Closing, Membership, Package, Takes, TipMigration):
 
 
     def update(self, **kw):
-        updateable = frozenset(['name', 'product_or_service', 'homepage',
-                                'onboarding_url'])
+        if self.package:
+            updateable = frozenset(['name', 'product_or_service', 'onboarding_url'])
+        else:
+            updateable = frozenset(['name', 'product_or_service', 'homepage',
+                                    'onboarding_url'])
 
         cols, vals = zip(*kw.items())
         assert set(cols).issubset(updateable)

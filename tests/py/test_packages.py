@@ -82,3 +82,11 @@ class Linking(Harness):
             self.make_team(name='foo-{}'.format(i)) # take `foo-{1-9}`
         _, _, team = self.link()
         assert team.slug == 'deadbeef-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+
+    def test_linked_team_takes_package_description(self):
+        _, _, team = self.link()
+        assert team.product_or_service == 'Foo fooingly.'
+
+    def test_linked_team_has_remote_package_url_as_homepage(self):
+        _, _, team = self.link()
+        assert team.homepage == 'https://www.npmjs.com/package/foo'
