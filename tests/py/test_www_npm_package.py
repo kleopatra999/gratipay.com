@@ -47,13 +47,8 @@ class Tests(Harness):
         assert team.package == foo
         return team.slug
 
-    def test_anon_gets_project_page_if_claimed(self):
+    def test_package_redirects_to_project_if_claimed(self):
         self.claim_package()
-        body = self.client.GET('/on/npm/foo/').body
-        assert 'owned by' in body
-
-    def test_project_page_redirects_to_package_if_claimed(self):
-        deadbeef = self.claim_package()
-        response = self.client.GxT('/{}/'.format(deadbeef))
+        response = self.client.GxT('/on/npm/foo/')
         assert response.code == 302
-        assert response.headers['Location'] == '/on/npm/foo/'
+        assert response.headers['Location'] == '/foo/'

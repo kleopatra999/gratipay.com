@@ -87,3 +87,6 @@ class NegativeBalance(Exception):
         return "Negative balance not allowed in this context."
 
 class NotWhitelisted(Exception): pass
+
+
+class OutOfOptions(Exception): pass

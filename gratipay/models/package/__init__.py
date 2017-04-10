@@ -4,6 +4,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import uuid
 
 from gratipay.models.team import Team
+from gratipay.exceptions import OutOfOptions
 from postgres.orm import Model
 
 
@@ -78,20 +79,38 @@ class Package(Model):
 
 
     def get_or_create_linked_team(self, cursor, owner):
-        """Given a db cursor and :py:class:`Participant`, return a
-        :py:class:`~gratipay.models.team.Team`.
+        """Given a db cursor and :py:class:`participant`, return a
+        :py:class:`~gratipay.models.team.team`.
         """
-        team = self.load_team(cursor)
-        if not team:
-            slug = str(uuid.uuid4()).lower()
+        return self.load_team(cursor) or self.create_linked_team(cursor, owner)
+
+
+    def create_linked_team(self, cursor, owner):
+        """Given a db cursor and :py:class:`participant`, return a
+        :py:class:`~gratipay.models.team.team`.
+        """
+
+        def slug_options():
+            yield self.name
+            for i in range(1, 10):
+                yield '{}-{}'.format(self.name, i)
+            yield str(uuid.uuid4()).lower()
+
+        for slug in slug_options():
+            if cursor.one('SELECT count(*) FROM teams WHERE slug=%s', (slug,)) > 0:
+                continue
             team = Team.insert( slug=slug
-                              , slug_lower=slug
+                              , slug_lower=slug.lower()
                               , name=slug
                               , homepage=''
                               , product_or_service=''
                               , owner=owner
                               , _cursor=cursor
                                )
-            cursor.run('UPDATE packages SET team_id=%s WHERE id=%s', (team.id, self.id))
-            self.set_attributes(team_id=team.id)
+            break
+        else:
+            raise OutOfOptions()
+
+        cursor.run('UPDATE packages SET team_id=%s WHERE id=%s', (team.id, self.id))
+        self.set_attributes(team_id=team.id)
         return team
