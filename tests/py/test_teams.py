@@ -5,7 +5,6 @@ import mock
 import pytest
 import base64
 
-from aspen import Response
 from aspen.testing.client import FileUpload
 from gratipay.testing import Harness, D,T
 from gratipay.models.team import Team, slugize, InvalidTeamName
