@@ -68,11 +68,9 @@ class Linking(Harness):
 
     @mock.patch('gratipay.models.package.uuid')
     def test_linking_team_gives_up_on_names_eventually(self, uuid):
-
-        self.make_team(name='foo')
+        self.make_team(name='foo')                  # take `foo`
         for i in range(1, 10):
-            self.make_team(name='foo-{}'.format(i))
-        self.make_team(name='deadbeef')
-
-        uuid.uuid4.return_value = 'deadbeef'
+            self.make_team(name='foo-{}'.format(i)) # take `foo-{1-9}`
+        self.make_team(name='deadbeef')             # take `deadbeef`(!)
+        uuid.uuid4.return_value = 'deadbeef'        # force-try `deadbeef`
         raises(OutOfOptions, self.link)

@@ -52,3 +52,7 @@ class Tests(Harness):
         response = self.client.GxT('/on/npm/foo/')
         assert response.code == 302
         assert response.headers['Location'] == '/foo/'
+
+    def test_package_served_as_project_if_claimed(self):
+        self.claim_package()
+        assert 'owned by' in self.client.GET('/foo/').body

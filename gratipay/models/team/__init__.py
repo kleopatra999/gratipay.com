@@ -72,6 +72,13 @@ class Team(Model, Available, Closing, Membership, Package, Takes, TipMigration):
     nreceiving_from = 0
 
 
+    @property
+    def url_path(self):
+        """The path part of the URL for this team on Gratipay.
+        """
+        return '/{}/'.format(self.slug)
+
+
     # Constructors
     # ============
 
@@ -308,12 +315,6 @@ class Team(Model, Available, Closing, Membership, Package, Takes, TipMigration):
                            , distributing=r.distributing
                            , ndistributing_to=r.ndistributing_to
                             )
-
-
-    def get_ui_state(self, user):
-        suppress_sidebar = not(self.is_approved or user.ADMIN)
-        is_team_owner = not user.ANON and self.owner == user.participant.username
-        return suppress_sidebar, is_team_owner
 
 
     @property
