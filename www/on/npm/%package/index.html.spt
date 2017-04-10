@@ -1,7 +1,7 @@
 import requests
 
 from aspen import Response
-from gratipay.utils import get_team, markdown, truncate
+from gratipay.utils import markdown, truncate
 from gratipay.models.package import Package
 
 [---]

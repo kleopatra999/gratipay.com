@@ -3,11 +3,11 @@
 from collections import OrderedDict
 
 from aspen import Response
-from gratipay.utils import get_team, markdown, truncate
+from gratipay.utils import markdown, truncate
 
 [-----------------------------------------------------------------------------]
 
-team = get_team(state)
+team = request.path['team']
 if team.package:
     website.redirect(team.package.url_path)
 banner = name = team.name

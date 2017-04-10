@@ -51,7 +51,7 @@ class TestPages(Harness):
                            .replace('/%user_name/', '/gratipay/') \
                            .replace('/%to', '/1') \
                            .replace('/%country', '/TT') \
-                           .replace('/%exchange_id.int', '/%s' % exchange_id) \
+                           .replace('/%exchange_id', '/%s' % exchange_id) \
                            .replace('/%redirect_to', '/giving') \
                            .replace('/%endpoint', '/public') \
                            .replace('/about/me/%sub', '/about/me')
