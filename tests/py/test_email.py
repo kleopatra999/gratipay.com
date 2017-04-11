@@ -4,6 +4,7 @@ import json
 import sys
 import urllib
 
+import mock
 from pytest import raises
 
 from gratipay.exceptions import CannotRemovePrimaryEmail, EmailTaken, EmailNotVerified
@@ -697,14 +698,38 @@ class PackageLinking(VerificationBase):
         self.alice.start_email_verification(address, *packages)
         return self.alice.get_email(address).nonce
 
+    @mock.patch('gratipay.project_review_repo.ConsolePoster.post')
     def check(self, *package_names):
+        package_names, post = package_names[:-1], package_names[-1]
+        post.return_value = 'some-github-url'
+
         nonce = self.start(self.address, *package_names)
         retval = self.alice.finish_email_verification(self.address, nonce)
+
+        # email?
         assert retval == _email.VERIFICATION_SUCCEEDED
         assert self.alice.email_address == P('alice').email_address == self.address
+
+        # database?
         for name in package_names:
             package = Package.from_names('npm', name)
             assert package.team.package == package
+            assert package.team.review_url == 'some-github-url'
+
+        # GitHub issue?
+        npackages = len(package_names)
+        if npackages == 0:
+            assert not post.called
+        else:
+            assert post.call_count == 1
+            posted = json.loads(post.mock_calls[0][1][0])
+            if npackages == 1:
+                assert posted['title'] == 'foo'
+                assert 'for at least a week' in posted['body']
+            else:
+                assert posted['title'] == 'foo and bar'
+                assert 'for at least a week' in posted['body']
+            assert self.db.all('select review_url from teams') == ['some-github-url'] * npackages
 
 
     def test_preverify_preverifies(self):

@@ -276,10 +276,20 @@ class Email(object):
         """Create teams if needed and associate them with the packages.
         """
         cursor.run('DELETE FROM claims WHERE nonce=%s', (nonce,))
+        if not packages:
+            return
         package_ids = []
+        teams = []
+        team_ids = []
         for package in packages:
-            package.get_or_create_linked_team(cursor, self)
             package_ids.append(package.id)
+            team = package.get_or_create_linked_team(cursor, self)
+            team_ids.append(team.id)
+            teams.append(team)
+        review_url = self.app.project_review_repo.create_issue(*teams)
+        cursor.run( 'UPDATE teams SET review_url=%s WHERE id=ANY(%s)'
+                  , (review_url, team_ids,)
+                   )
         self.app.add_event( cursor
                           , 'participant'
                           , dict( id=self.id
