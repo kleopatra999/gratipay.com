@@ -90,3 +90,7 @@ class Linking(Harness):
     def test_linked_team_has_remote_package_url_as_homepage(self):
         _, _, team = self.link()
         assert team.homepage == 'https://www.npmjs.com/package/foo'
+
+    def test_review_url_doesnt_get_set_here(self):
+        _, _, team = self.link()
+        assert team.review_url is None

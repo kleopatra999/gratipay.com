@@ -5,8 +5,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import re
 from decimal import Decimal
 
-import requests
-from aspen import json, log, Response
+from aspen import Response
 from postgres.orm import Model
 
 from .available import Available
@@ -247,30 +246,6 @@ class Team(Model, Available, Closing, Membership, Package, Takes, TipMigration):
                        AND cpi2.is_funded
                    ) >= %(mcharge)s
         """, {'team_id': self.id, 'mcharge': MINIMUM_CHARGE})
-
-
-    def create_github_review_issue(self):
-        """POST to GitHub, and return the URL of the new issue.
-        """
-        api_url = "https://api.github.com/repos/{}/issues".format(self.review_repo)
-        data = json.dumps({ "title": self.name
-                          , "body": "https://gratipay.com/{}/\n\n".format(self.slug) +
-                                    "(This application will remain open for at least a week.)"
-                           })
-        out = ''
-        try:
-            r = requests.post(api_url, auth=self.review_auth, data=data)
-            if r.status_code == 201:
-                out = r.json()['html_url']
-            else:
-                log(r.status_code)
-                log(r.text)
-            err = str(r.status_code)
-        except:
-            err = "eep"
-        if not out:
-            out = "https://github.com/gratipay/team-review/issues#error-{}".format(err)
-        return out
 
 
     def set_review_url(self, review_url):

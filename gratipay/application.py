@@ -7,6 +7,7 @@ from . import email, utils
 from .cron import Cron
 from .models import GratipayDB
 from .payday_runner import PaydayRunner
+from .project_review_repo import ProjectReviewRepo
 from .website import Website
 
 
@@ -35,7 +36,6 @@ class Application(object):
         wireup.base_url(website, env)
         wireup.secure_cookies(env)
         wireup.billing(env)
-        wireup.team_review(env)
         wireup.username_restrictions(website)
         wireup.load_i18n(website.project_root, tell_sentry)
         wireup.other_stuff(website, env)
@@ -46,6 +46,7 @@ class Application(object):
         self.install_periodic_jobs(website, env, db)
         self.website = website
         self.payday_runner = PaydayRunner(self)
+        self.project_review_repo = ProjectReviewRepo(env)
 
 
     def install_periodic_jobs(self, website, env, db):
