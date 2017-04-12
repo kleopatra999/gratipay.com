@@ -24,23 +24,21 @@ class Linking(Harness):
 
     def link(self):
         alice = self.make_participant('alice')
-        foo = self.make_package()
+        package = self.make_package()
         with self.db.get_cursor() as c:
-            team = foo.get_or_create_linked_team(c, alice)
-        return alice, foo, team
+            team = package.get_or_create_linked_team(c, alice)
+        return alice, package, team
 
     def test_package_team_is_none(self):
-        foo = self.make_package()
-        assert foo.team is None
+        assert self.make_package().team is None
 
     def test_team_package_is_none(self):
-        foo = self.make_team()
-        assert foo.package is None
+        assert self.make_team().package is None
 
     def test_can_link_to_a_new_team(self):
-        _, foo, team = self.link()
-        assert team.package == foo
-        assert foo.team == team
+        _, package, team = self.link()
+        assert team.package == package
+        assert package.team == team
 
     def test_linking_is_idempotent(self):
         alice, package, team = self.link()
