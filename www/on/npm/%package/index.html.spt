@@ -41,20 +41,17 @@ banner = package_name
 
 {% block content %}
 
-<p>{{ package.description }}</p>
+<p class="description important-thing-at-the-top">{{ package.description }}</p>
 
-<h2>{{ _( '{npm_package} has not been claimed on Gratipay.'
-        , npm_package=('<a href="' + url + '">' + 'npm/' + package_name + '</a>')|safe
-         ) }}</h2>
+<p>{{ _( 'No one has claimed the {package_link} npm package.'
+       , package_link=('<a href="' + url + '">' + package_name + '</a>')|safe
+        ) }}</p>
+
 {% if user.ANON %}
-    <p>{{ _('Is this yours? You can claim it on Gratipay with a couple clicks:') }}</p>
+    <p>{{ _('Yours? Accept payments with a few clicks ...') }}</p>
     {% include "templates/sign-in-using.html" %}
-
-    <h2>{{ _('What is Gratipay?') }}</h2>
-    <p>{{ _('Gratipay helps companies and others pay for open source.') }}
-    <a href="/about/">{{ _("Learn more") }}</a></p>
 {% else %}
-    <p>{{ _( 'Is this yours? You can claim it on Gratipay using any email address {a}on file{_a} in the maintainers field in the npm registry.'
+    <p>{{ _( 'Yours? You can claim it on Gratipay using any email address {a}on file{_a} in the maintainers field in the npm registry.'
            , a=('<a href="https://registry.npmjs.com/' + package.name + '">')|safe
            , _a='</a>'|safe
             ) }}
