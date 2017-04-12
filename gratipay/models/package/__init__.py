@@ -60,6 +60,9 @@ class Package(Model):
                           "WHERE package_manager=%s and name=%s", (package_manager, name))
 
 
+    # Team
+    # ====
+
     @property
     def team(self):
         """A computed attribute, the :py:class:`~gratipay.models.team.Team`
@@ -108,4 +111,19 @@ class Package(Model):
                            )
         cursor.run('INSERT INTO teams_to_packages (team_id, package_id) '
                    'VALUES (%s, %s)', (team.id, self.id))
+        self.app.add_event( cursor
+                          , 'package'
+                          , dict(id=self.id, action='link', values=dict(team_id=team.id))
+                           )
         return team
+
+
+    def unlink_team(self, cursor):
+        """Given a db cursor, unlink the team associated with this package
+        (it's a bug if called with no team linked).
+        """
+        cursor.run('DELETE FROM teams_to_packages WHERE package_id=%s', (self.id,))
+        self.app.add_event( cursor
+                          , 'package'
+                          , dict(id=self.id, action='unlink', values=dict(team_id=self.team.id))
+                           )
