@@ -4,6 +4,9 @@
     }
     .description {
         font: normal 18pt/24pt $Chronicle;
+        &.long {
+            font: normal 11pt/15pt $Chronicle;
+        }
         padding: 0 20%;
     }
     #content .sign-in {
