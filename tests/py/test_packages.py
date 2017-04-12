@@ -84,3 +84,8 @@ class Linking(Harness):
     def test_review_url_doesnt_get_set_here(self):
         _, _, team = self.link()
         assert team.review_url is None
+
+    def test_closing_team_unlinks_package(self):
+        _, _, team = self.link()
+        team.close()
+        assert Package.from_names('npm', 'foo').team is None
