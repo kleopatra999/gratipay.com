@@ -62,7 +62,7 @@ class Application(object):
         This is the function we use to capture interesting events that happen
         across the system in one place, the ``events`` table.
 
-        :param c: a :py:class:`Postres` or :py:class:`Cursor` instance
+        :param c: a :py:class:`Postgres` or :py:class:`Cursor` instance
         :param unicode type: an indicator of what type of event it is--either ``participant``,
           ``team`` or ``payday``
         :param payload: an arbitrary JSON-serializable data structure; for ``participant`` type,
