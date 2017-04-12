@@ -80,7 +80,7 @@ page_id = "homepage"
 {% endblock %}
 
 {% block content %}
-<form action="new" class="apply">
+<form action="/apply" class="apply-button">
     <button type="submit">{{ _("Fund Your Project") }}</button>
 </form>
 
