@@ -22,9 +22,8 @@ banner = package_name
 
 {% block banner %}
 <a class="elsewhere" href="{{ url }}">
-    <div class="avatar text">
-        <div class="bg"></div>
-        <p>{{ package.description }}</p>
+    <div class="avatar">
+        <img class="avatar" src="{{ website.asset('package-default-large.png') }}" />
         <img class="platform" src="{{ website.asset('npm-n.png') }}" />
     </div>
     {{ super() }}
@@ -41,6 +40,9 @@ banner = package_name
 {% endblock %}
 
 {% block content %}
+
+<p>{{ package.description }}</p>
+
 <h2>{{ _( '{npm_package} has not been claimed on Gratipay.'
         , npm_package=('<a href="' + url + '">' + 'npm/' + package_name + '</a>')|safe
          ) }}</h2>

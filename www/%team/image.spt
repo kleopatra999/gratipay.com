@@ -6,7 +6,7 @@ load = lambda s: open(join(website.www_root, 'assets', 'team-default-{}.png'.for
 DEFAULTS = {size: load(size) for size in ('large', 'small')}
 DEFAULTS['original'] = DEFAULTS['large']
 
-load = lambda s: open(join(website.www_root, 'assets', 'team-default-npm-{}.png'.format(s))).read()
+load = lambda s: open(join(website.www_root, 'assets', 'package-default-{}.png'.format(s))).read()
 DEFAULTS_NPM = {size: load(size) for size in ('large', 'small')}
 DEFAULTS_NPM['original'] = DEFAULTS_NPM['large']
 [----]
