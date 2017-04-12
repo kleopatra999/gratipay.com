@@ -112,5 +112,21 @@ class Package(Model):
             raise OutOfOptions()
 
         cursor.run('UPDATE packages SET team_id=%s WHERE id=%s', (team.id, self.id))
+        self.app.add_event( cursor
+                          , 'package'
+                          , dict(id=self.id, action='link', values=dict(team_id=team.id))
+                           )
         self.set_attributes(team_id=team.id)
         return team
+
+
+    def unlink_team(self, cursor):
+        """Given a db cursor, unlink the team associated with this package
+        (it's a bug if called with no team linked).
+        """
+        cursor.run('UPDATE packages SET team_id=null WHERE id=%s', (self.id,))
+        self.app.add_event( cursor
+                          , 'package'
+                          , dict(id=self.id, action='unlink', values=dict(team_id=self.team_id))
+                           )
+        self.set_attributes(team_id=None)
