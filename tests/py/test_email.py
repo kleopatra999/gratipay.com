@@ -533,6 +533,31 @@ class StartEmailVerification(Alice):
         start()
         assert nonce1 != nonce()
 
+    def test_finishing_verification_clears_competing_claims_and_emails(self):
+        bob = self.make_participant('bob', claimed_time='now')
+        foo = self.make_package()
+
+        self.alice.start_email_verification('alice@example.com', foo)
+        anonce = self.alice.get_emails()[0].nonce
+
+        bob.start_email_verification('alice@example.com', foo)
+        bnonce = bob.get_emails()[0].nonce
+
+        emails = lambda: self.db.all('select participant_id as i from emails order by i')
+        claims = lambda: dict(self.db.all('select nonce, package_id from claims'))
+
+        assert claims() == {anonce: foo.id, bnonce: foo.id}
+        assert emails() == [self.alice.id, bob.id]
+
+        r = self.alice.finish_email_verification('alice@example.com', anonce)
+        assert r == _email.VERIFICATION_SUCCEEDED
+
+        assert claims() == {}
+        assert emails() == [self.alice.id]
+
+        r = bob.finish_email_verification('alice@example.com', bnonce)
+        assert r == _email.VERIFICATION_FAILED
+
 
 class RemoveEmail(Alice):
 

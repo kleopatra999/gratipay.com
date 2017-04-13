@@ -2,7 +2,8 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 import mock
-from gratipay.models.package import NPM, Package
+from gratipay.models.package import Package, NPM
+from gratipay.models.package.emails import PRIMARY, VERIFIED, UNVERIFIED, UNLINKED, OTHER
 from gratipay.testing import Harness
 from psycopg2 import IntegrityError
 from pytest import raises
@@ -97,3 +98,47 @@ class Linking(Harness):
         _, _, team = self.link()
         team.close()
         assert Package.from_names('npm', 'foo').team is None
+
+
+class GroupEmailsForParticipant(Harness):
+
+    def test_ordering(self):
+        emails = ['amail', 'bmail', 'cmail', 'dmail', 'email', 'lumail', 'primary']
+        foo = self.make_package(emails=emails)
+
+        # verified for other
+        bob = self.make_participant('bob', claimed_time='now')
+        bob.start_email_verification('bmail')
+        nonce = bob.get_email('bmail').nonce
+        bob.finish_email_verification('bmail', nonce)
+
+        # linked to other but unverified
+        bob.start_email_verification('dmail')
+
+        # primary
+        alice = self.make_participant('alice', claimed_time='now')
+        alice.start_email_verification('primary')
+        nonce = alice.get_email('primary').nonce
+        alice.finish_email_verification('primary', nonce)
+
+        # linked to self but unverified
+        alice.start_email_verification('lumail')
+
+        # verified for self
+        alice.start_email_verification('amail')
+        nonce = alice.get_email('amail').nonce
+        alice.finish_email_verification('amail', nonce)
+
+        # unlinked
+        pass  # cmail, email -- tests alphabetization within grouping
+
+        # creation order doesn't relate to final order
+        emails = foo.classify_emails_for_participant(alice)
+        assert emails == [ ('primary', PRIMARY)
+                         , ('amail', VERIFIED)
+                         , ('lumail', UNVERIFIED)
+                         , ('cmail', UNLINKED)
+                         , ('dmail', UNLINKED)
+                         , ('email', UNLINKED)
+                         , ('bmail', OTHER)
+                          ]

@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 from postgres.orm import Model
 
+from .emails import Emails
 from .team import Team
 
 
@@ -10,7 +11,7 @@ NPM = 'npm'  # We are starting with a single package manager. If we see
              # traction we will expand.
 
 
-class Package(Model, Team):
+class Package(Model, Emails, Team):
     """Represent a gratipackage. :-)
 
     Packages are entities on open source package managers; `npm
@@ -40,6 +41,24 @@ class Package(Model, Team):
         """The path part of the URL for this package on Gratipay.
         """
         return '/on/{}/{}/'.format(self.package_manager, self.name)
+
+
+    @property
+    def remote_human_url(self):
+        """The URL for the main page for this package on its package manager.
+        """
+        if self.package_manager == NPM:
+            return 'https://www.npmjs.com/package/{}'.format(self.name)
+        raise NotImplementedError()
+
+
+    @property
+    def remote_api_url(self):
+        """The main API URL for this package on its package manager.
+        """
+        if self.package_manager == NPM:
+            return 'https://registry.npmjs.com/{}'.format(self.name)
+        raise NotImplementedError()
 
 
     # Constructors

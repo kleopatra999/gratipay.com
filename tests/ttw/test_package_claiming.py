@@ -10,7 +10,8 @@ class TestSendConfirmationLink(BrowserHarness):
         self.make_participant('bob', claimed_time='now')
         self.sign_in('bob')
         self.visit('/on/npm/foo/')
-        self.css('input[type=radio]')[choice].click()
+        self.css('label')[0].click() # activate select
+        self.css('label')[choice].click()
         self.css('button')[0].click()
         assert self.has_element('.notification.notification-success', 1)
         assert self.has_text('Check your inbox for a verification link.')
