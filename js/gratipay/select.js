@@ -11,7 +11,7 @@ Gratipay.Select = function(selector) {
     var cursorOffset = 0;   // negative or positive int
 
     function unhover() {
-        $(this).removeClass('hover');
+        $(this).closest('li').removeClass('hover');
     }
 
     function hover() {
@@ -22,7 +22,7 @@ Gratipay.Select = function(selector) {
 
         var $label = $(this);
         unhover.call($('.hover'), $ul);
-        $label.addClass('hover');
+        $label.closest('li').addClass('hover');
         if ($ul.hasClass('open'))
             cursorOffset = $labels.index($label) - Math.round(topFactor);
     }
@@ -37,7 +37,7 @@ Gratipay.Select = function(selector) {
 
             // Don't call the hover function, because we don't want to
             // change cursorOffset. Just apply the class.
-            $labels.eq(hoverIndex).addClass('hover');
+            $labels.eq(hoverIndex).closest('li').addClass('hover');
         }
         topFactor = t;
     }

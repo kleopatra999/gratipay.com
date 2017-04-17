@@ -1,17 +1,6 @@
 #package #content {
     text-align: center;
 
-    .selected {
-        .icon { display: block; }
-    }
-    .icon {
-        display: none;
-        position: absolute;
-        top: 12px;
-        left: 16px;
-        font-size: 24px;
-        line-height: 24px;
-    }
     .instructions {
         text-align: center;
         margin: 0 0 30px;
@@ -24,6 +13,17 @@
         }
         padding: 0 17%;
     }
+
+    .selected .icon { display: block; }
+    .icon {
+        display: none;
+        position: absolute;
+        top: 12px;
+        left: 16px;
+        font-size: 24px;
+        line-height: 24px;
+    }
+
     .button-wrapper {
         margin: 38px auto 30px;
     }

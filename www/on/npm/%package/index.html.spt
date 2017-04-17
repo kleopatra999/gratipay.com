@@ -85,6 +85,7 @@ banner = package_name
                         {% endif %}
                     </div>
                 </div>
+                <span class="arrow"></span>
             </li>
         {% endfor %}
         </ul>

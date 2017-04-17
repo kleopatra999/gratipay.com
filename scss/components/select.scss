@@ -17,7 +17,25 @@
             li {
                 display: block;
             }
+            .arrow {
+                display: none;
+            }
         }
+
+        .arrow {
+            display: block;
+            position: absolute;
+            bottom: 16px;
+            right: 16px;
+
+            width: 0;
+            height: 0;
+            border-top: 8px solid $light-gray;
+            border-right: 8px solid transparent;
+            border-left: 8px solid transparent;
+            content: "";
+        }
+        li.hover .arrow { border-top-color: $green; }
 
 
         /* Everything else. */
@@ -53,10 +71,6 @@
                     overflow: hidden;
                     text-overflow: ellipsis;
                     padding: 12px 24px 0 56px;
-                    &.hover {
-                        color: $green ! important;
-                        cursor: pointer;
-                    }
                 }
                 .listing-details {
                     display: block;
@@ -64,6 +78,12 @@
                     white-space: nowrap;
                 }
             }
+            &.hover label {
+                cursor: pointer;
+            }
+        }
+        &.open .hover label {
+            color: $green ! important;
         }
     }
 }
