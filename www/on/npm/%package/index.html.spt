@@ -62,30 +62,32 @@ banner = package_name
     <p class="note">{{ _("No email addresses on file.") }}</p>
     {% else %}
     <input type="hidden" name="package_id" value="{{ package.id }}">
-    <ul class="package-emails gratipay-select">
-    {% set classified = package.classify_emails_for_participant(user.participant) %}
-    {% for i, (email, group) in enumerate(classified, start=1) %}
-        <li{% if i == 1 %} class="selected"{% endif %}>
-            <input type="radio" name="email" value="{{ email }}" id="email-{{i}}"
-                   {% if i == 1 %}checked{% endif %}>
-            <div class="listing-wrapper">
-                <label class="listing-name" for="email-{{ i }}">{{ email }}</label>
-                <div class="listing-details">
-                    <span class="i">{{ i }}</span>
-                    {% if group == PRIMARY %}
-                    <span>&middot; {{ _('Your primary email address') }}</span>
-                    {% elif group == VERIFIED %}
-                    <span>&middot; {{ _('Already linked to your account') }}</span>
-                    {% elif group in (UNVERIFIED, UNLINKED) %}
-                    <span>&middot; {{ _('Ready to link') }}</span>
-                    {% elif group == OTHER %}
-                    <span>&middot; {{ _('Already linked to another account') }}</span>
-                    {% endif %}
+    <div class="gratipay-select">
+        <ul>
+        {% set classified = package.classify_emails_for_participant(user.participant) %}
+        {% for i, (email, group) in enumerate(classified, start=1) %}
+            <li{% if i == 1 %} class="selected"{% endif %}>
+                <input type="radio" name="email" value="{{ email }}" id="email-{{i}}"
+                       {% if i == 1 %}checked{% endif %}>
+                <div class="listing-wrapper">
+                    <label class="listing-name" for="email-{{ i }}">{{ email }}</label>
+                    <div class="listing-details">
+                        <span class="i">{{ i }}</span>
+                        {% if group == PRIMARY %}
+                        <span>&middot; {{ _('Your primary email address') }}</span>
+                        {% elif group == VERIFIED %}
+                        <span>&middot; {{ _('Already linked to your account') }}</span>
+                        {% elif group in (UNVERIFIED, UNLINKED) %}
+                        <span>&middot; {{ _('Ready to link') }}</span>
+                        {% elif group == OTHER %}
+                        <span>&middot; {{ _('Already linked to another account') }}</span>
+                        {% endif %}
+                    </div>
                 </div>
-            </div>
-        </li>
-    {% endfor %}
-    </ul>
+            </li>
+        {% endfor %}
+        </ul>
+    </div>
 
     <div class="button-wrapper">
         <button type="submit" class="apply selected large">

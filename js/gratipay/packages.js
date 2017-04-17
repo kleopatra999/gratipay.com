@@ -1,7 +1,7 @@
 Gratipay.packages = {};
 
 Gratipay.packages.init = function() {
-    Gratipay.Select('.package-emails');
+    Gratipay.Select('.gratipay-select');
     $('button.apply').on('click', Gratipay.packages.post);
 };
 

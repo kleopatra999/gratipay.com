@@ -1,5 +1,5 @@
 Gratipay.Select = function(selector) {
-    var $ul = $(selector);
+    var $ul = $('ul', selector);
     var $labels = $('label', $ul);
 
     // state for vertical position
@@ -9,8 +9,6 @@ Gratipay.Select = function(selector) {
     // state for hovering
     var hoverIndex = 0;     // int between 0 and $labels.length-1
     var cursorOffset = 0;   // negative or positive int
-
-    $('<div>').addClass('gratipay-select-wrapper').insertAfter($ul).append($ul.remove());
 
     function unhover() {
         $(this).removeClass('hover');
