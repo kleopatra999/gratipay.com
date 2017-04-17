@@ -25,17 +25,27 @@
         .arrow {
             display: block;
             position: absolute;
-            bottom: 16px;
+            z-index: 0;
             right: 16px;
-
             width: 0;
             height: 0;
-            border-top: 8px solid $light-gray;
-            border-right: 8px solid transparent;
-            border-left: 8px solid transparent;
+            border-right: 6px solid transparent;
+            border-left: 6px solid transparent;
             content: "";
+
+            &.up {
+                bottom: 22px;
+                border-top: 8px solid $light-gray;
+            }
+            &.down {
+                top: 22px;
+                border-bottom: 8px solid $light-gray;
+            }
         }
-        li.hover .arrow { border-top-color: $green; }
+        li.hover .arrow {
+            &.up { border-top-color: $green; }
+            &.down { border-bottom-color: $green; }
+        }
 
 
         /* Everything else. */
@@ -71,6 +81,7 @@
                     overflow: hidden;
                     text-overflow: ellipsis;
                     padding: 12px 24px 0 56px;
+                    z-index: 1;
                 }
                 .listing-details {
                     display: block;

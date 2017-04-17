@@ -29,6 +29,9 @@
         line-height: 12px;
         margin: 0;
     }
+    ul:not(.open) .status-icon {
+        color: $medium-gray;
+    }
 
     .button-wrapper {
         margin: 38px auto 30px;
