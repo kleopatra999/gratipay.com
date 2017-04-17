@@ -75,24 +75,25 @@ banner = package_name
                     <div class="listing-details">
                         <span class="i">{{ i }}</span>
                         <span>&middot;
-                        {% if group == PRIMARY %}
-                            {{ _('Ready to use') }}
-                            &middot;
-                            <span class="status-icon feature">
-                                {{ icons.STATUS_ICONS['feature']|safe }}</span>
-                            {{ _('Your primary email address') }}
-                        {% elif group == VERIFIED %}
-                            {{ _('Ready to use') }}
-                            &middot;
-                            <span class="status-icon success">
-                                {{ icons.STATUS_ICONS['success']|safe }}</span>
-                            {{ _('Linked to your account') }}
-                        {% elif group in (UNVERIFIED, UNLINKED) %}
-                            {{ _('Ready to use') }}
-                        {% elif group == OTHER %}
+                        {% if group == OTHER %}
                             <span class="status-icon failure">
                                 {{ icons.STATUS_ICONS['failure']|safe }}</span>
                             {{ _('Linked to a different account') }}
+                        {% else %}
+                            {{ _('Ready to use') }}
+                            {% if group == PRIMARY %}
+                                &middot; <span class="status-icon feature">
+                                    {{ icons.STATUS_ICONS['feature']|safe }}</span>
+                                {{ _('Your primary email address') }}
+                            {% elif group == VERIFIED %}
+                                &middot; <span class="status-icon success">
+                                    {{ icons.STATUS_ICONS['success']|safe }}</span>
+                                {{ _('Linked to your account') }}
+                            {% elif group == UNVERIFIED %}
+                                &middot; <span class="status-icon warning">
+                                    {{ icons.STATUS_ICONS['warning']|safe }}</span>
+                                {{ _('Half-linked to your account') }}
+                            {% endif %}
                         {% endif %}
                     </div>
                 </div>
