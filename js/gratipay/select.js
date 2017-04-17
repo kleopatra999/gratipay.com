@@ -1,4 +1,4 @@
-Gratipay.Dropdown = function(selector) {
+Gratipay.Select = function(selector) {
     var $ul = $(selector);
     var $labels = $('label', $ul);
 
@@ -10,7 +10,7 @@ Gratipay.Dropdown = function(selector) {
     var hoverIndex = 0;     // int between 0 and $labels.length-1
     var cursorOffset = 0;   // negative or positive int
 
-    $('<div>').addClass('gratipay-dropdown-wrapper').insertAfter($ul).append($ul.remove());
+    $('<div>').addClass('gratipay-select-wrapper').insertAfter($ul).append($ul.remove());
 
     function unhover() {
         $(this).removeClass('hover');

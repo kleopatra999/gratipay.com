@@ -62,7 +62,7 @@ banner = package_name
     <p class="note">{{ _("No email addresses on file.") }}</p>
     {% else %}
     <input type="hidden" name="package_id" value="{{ package.id }}">
-    <ul class="package-emails gratipay-dropdown">
+    <ul class="package-emails gratipay-select">
     {% set classified = package.classify_emails_for_participant(user.participant) %}
     {% for i, (email, group) in enumerate(classified, start=1) %}
         <li{% if i == 1 %} class="selected"{% endif %}>

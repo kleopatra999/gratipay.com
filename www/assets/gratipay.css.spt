@@ -23,7 +23,6 @@
 
 @import "scss/elements/reset";
 @import "scss/elements/buttons-knobs";
-@import "scss/elements/dropdown";
 @import "scss/elements/elements";
 
 @import "scss/components/banner";
@@ -45,6 +44,7 @@
 @import "scss/components/nav";
 @import "scss/components/payments-by";
 @import "scss/components/profile-statement";
+@import "scss/components/select";
 @import "scss/components/sidebar";
 @import "scss/components/sign_in";
 @import "scss/components/status-icon";
