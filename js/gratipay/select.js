@@ -51,6 +51,7 @@ Gratipay.Select = function(selector) {
 
     function close($label) {
         if ($label) {
+            if ($label.closest('li').hasClass('disabled')) return;
             $('.selected', $ul).removeClass('selected')
             $label.closest('li').addClass('selected').removeClass('hover');
         }
@@ -70,7 +71,7 @@ Gratipay.Select = function(selector) {
         close();
     }
 
-    $('label', $ul).click(select).hover(hover, unhover);
+    $('li label', $ul).click(select).hover(hover, unhover);
     $('html').click(clear);
 
 

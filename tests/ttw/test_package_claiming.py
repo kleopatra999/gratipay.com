@@ -28,3 +28,18 @@ class TestSendConfirmationLink(BrowserHarness):
     def test_can_send_to_second_email(self):
         self.make_package(emails=['alice@example.com', 'bob@example.com'])
         assert self.check(choice=1) == 'bob@example.com'
+
+    def test_disabled_items_are_disabled(self):
+        self.make_package(emails=['alice@example.com', 'bob@example.com'])
+        alice = self.make_participant('alice', claimed_time='now')
+        self.add_and_verify_email(alice, 'alice@example.com', 'bob@example.com')
+
+        self.make_participant('bob', claimed_time='now')
+        self.sign_in('bob')
+        self.visit('/on/npm/foo/')
+        self.css('label')[0].click()            # activate select
+        self.css('label')[1].click()            # click second item
+        self.css('li')[0].has_class('selected') # first item is still selected
+        self.css('ul')[0].has_class('open')     # still open
+        self.css('button').has_class('disabled')
+        assert self.db.all('select * from claims') == []

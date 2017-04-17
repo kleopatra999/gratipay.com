@@ -89,11 +89,14 @@
                     white-space: nowrap;
                 }
             }
-            &.hover label {
+            &.hover:not(.disabled) label {
                 cursor: pointer;
             }
+            &.disabled label {
+                color: $medium-gray ! important;
+            }
         }
-        &.open .hover label {
+        &.open .hover:not(.disabled) label {
             color: $green ! important;
         }
     }

@@ -17,6 +17,10 @@ elif package.team:
 page_id = "package"
 suppress_sidebar = True
 banner = package_name
+
+if user.participant:
+    emails = package.classify_emails_for_participant(user.participant)
+    has_email_options = bool([x for x in emails if x[1] != OTHER])
 [---]
 {% extends "templates/base.html" %}
 
@@ -58,15 +62,15 @@ banner = package_name
         {% include "templates/sign-in-using.html" %}
     </div>
 {% else %}
-    {% if len(package.emails) == 0 %}
+    {% if len(emails) == 0 %}
     <p class="note">{{ _("No email addresses on file.") }}</p>
     {% else %}
     <input type="hidden" name="package_id" value="{{ package.id }}">
     <div class="gratipay-select">
         <ul>
-        {% set classified = package.classify_emails_for_participant(user.participant) %}
-        {% for i, (email, group) in enumerate(classified, start=1) %}
-            <li{% if i == 1 %} class="selected"{% endif %}>
+        {% for i, (email, group) in enumerate(emails, start=1) %}
+            <li class="{% if group == OTHER %}disabled{% endif %}
+                       {% if i == 1 %}selected{% endif %}">
                 <input type="radio" name="email" value="{{ email }}" id="email-{{i}}"
                        {% if i == 1 %}checked{% endif %}>
                 <span class="icon">&#xe007;</span>
@@ -105,7 +109,8 @@ banner = package_name
     </div>
 
     <div class="button-wrapper">
-        <button type="submit" class="apply selected large">
+        <button type="submit" class="apply selected large"
+                {% if not has_email_options %} disabled{% endif %}>
             {{ _('Apply to accept payments') }}
         </button>
     </div>
