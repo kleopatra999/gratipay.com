@@ -1,7 +1,7 @@
 import requests
 
 from aspen import Response
-from gratipay.utils import markdown, truncate
+from gratipay.utils import icons, markdown, truncate
 from gratipay.models.package import Package
 from gratipay.models.package.emails import PRIMARY, VERIFIED, UNVERIFIED, UNLINKED, OTHER
 
@@ -74,14 +74,25 @@ banner = package_name
                     <label class="listing-name" for="email-{{ i }}">{{ email }}</label>
                     <div class="listing-details">
                         <span class="i">{{ i }}</span>
+                        <span>&middot;
                         {% if group == PRIMARY %}
-                        <span>&middot; {{ _('Your primary email address') }}</span>
+                            {{ _('Ready to use') }}
+                            &middot;
+                            <span class="status-icon feature">
+                                {{ icons.STATUS_ICONS['feature']|safe }}</span>
+                            {{ _('Your primary email address') }}
                         {% elif group == VERIFIED %}
-                        <span>&middot; {{ _('Already linked to your account') }}</span>
+                            {{ _('Ready to use') }}
+                            &middot;
+                            <span class="status-icon success">
+                                {{ icons.STATUS_ICONS['success']|safe }}</span>
+                            {{ _('Linked to your account') }}
                         {% elif group in (UNVERIFIED, UNLINKED) %}
-                        <span>&middot; {{ _('Ready to link') }}</span>
+                            {{ _('Ready to use') }}
                         {% elif group == OTHER %}
-                        <span>&middot; {{ _('Already linked to another account') }}</span>
+                            <span class="status-icon failure">
+                                {{ icons.STATUS_ICONS['failure']|safe }}</span>
+                            {{ _('Linked to a different account') }}
                         {% endif %}
                     </div>
                 </div>
