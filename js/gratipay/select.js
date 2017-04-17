@@ -52,7 +52,7 @@ Gratipay.Select = function(selector) {
     function close($label) {
         if ($label) {
             $('.selected', $ul).removeClass('selected')
-            $label.closest('li').addClass('selected');
+            $label.closest('li').addClass('selected').removeClass('hover');
         }
         $ul.css({'top': 0}).removeClass('open');
         $ul.unbind('mousewheel');
