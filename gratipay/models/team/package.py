@@ -12,12 +12,8 @@ class Package(object):
         :py:class:`~gratipay.models.package.Package` linked to this team if
         there is one, otherwise ``None``. Makes a database call.
         """
-        return self.load_package(self.db)
+        return self._load_package(self.db)
 
 
-    def load_package(self, cursor):
-        """Given a database cursor, return a
-        :py:class:`~gratipay.models.package.Package` if there is one linked to
-        this package, or ``None`` if not.
-        """
+    def _load_package(self, cursor):
         return cursor.one('SELECT p.*::packages FROM packages p WHERE p.team_id=%s', (self.id,))
