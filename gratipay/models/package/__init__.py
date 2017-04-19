@@ -59,22 +59,13 @@ class Package(Model):
         linked to this package if there is one, otherwise ``None``. Makes a
         database call.
         """
-        return self.load_team(self.db)
+        return self._load_team(self.db)
 
 
-    def load_team(self, cursor):
-        """Given a database cursor, return a
-        :py:class:`~gratipay.models.team.Team` if there is one linked to this
-        package, or ``None`` if not.
+    def ensure_team(self, cursor, owner):
+        """Given a db cursor and :py:class:`Participant`, insert into ``teams`` if need be.
         """
-        return cursor.one('SELECT t.*::teams FROM teams t WHERE t.id=%s', (self.team_id,))
-
-
-    def get_or_create_linked_team(self, cursor, owner):
-        """Given a db cursor and :py:class:`Participant`, return a
-        :py:class:`~gratipay.models.team.Team`.
-        """
-        team = self.load_team(cursor)
+        team = self._load_team(cursor)
         if not team:
             slug = str(uuid.uuid4()).lower()
             team = Team.insert( slug=slug
@@ -88,3 +79,7 @@ class Package(Model):
             cursor.run('UPDATE packages SET team_id=%s WHERE id=%s', (team.id, self.id))
             self.set_attributes(team_id=team.id)
         return team
+
+
+    def _load_team(self, cursor):
+        return cursor.one('SELECT t.*::teams FROM teams t WHERE t.id=%s', (self.team_id,))
