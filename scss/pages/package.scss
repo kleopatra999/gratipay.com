@@ -39,5 +39,26 @@
 
     .button-wrapper {
         margin: 38px auto 30px;
+
+        button.large {
+            font: normal 16px/32px $Ideal;
+            padding: 10px 16px;
+            border-radius: 5px;
+
+            .caret {
+                border-top: 8px solid #fff;
+                border-right: 5px solid transparent;
+                border-left: 5px solid transparent;
+                margin-top: 13px;
+            }
+        }
+        .dropdown-menu {
+            top: 50px;
+            width: 90%;
+            left: 5%;
+            border-radius: 0 0 3px 3px;
+        }
     }
+
+
 }

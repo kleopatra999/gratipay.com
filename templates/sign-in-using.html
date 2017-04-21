@@ -1,9 +1,9 @@
 {% from 'templates/auth.html' import auth_button with context %}
 
-{% macro sign_in_using() %}
+{% macro sign_in_using(button_class='') %}
 <div class="sign-in">
   <div class="dropdown">
-    <button class="dropdown-toggle" data-toggle="dropdown">
+    <button class="dropdown-toggle {{ button_class }}" data-toggle="dropdown">
         {{ _('Sign in / Sign up') }} <b class="caret"></b>
     </button>
     <ul class="dropdown-menu" role="menu" aria-labelledby="dLabel">

@@ -46,11 +46,6 @@ button.selected:hover:not(:disabled), button.selected.drag,
 .button.selected:hover:not(:disabled), .button.selected.drag {
     background: $darker-green;
 }
-button.large {
-    font: normal 16px/32px $Ideal;
-    padding: 10px 16px;
-    border-radius: 5px;
-}
 
 .buttons button {
     margin-top: 3px;

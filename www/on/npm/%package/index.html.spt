@@ -59,7 +59,7 @@ if user.participant:
 
 {% if user.ANON %}
     <div class="button-wrapper">
-        {{ sign_in_using() }}
+        {{ sign_in_using(button_class='large') }}
     </div>
 {% else %}
     {% if len(emails) == 0 %}
