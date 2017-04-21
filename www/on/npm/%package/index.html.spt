@@ -59,7 +59,7 @@ if user.participant:
 
 {% if user.ANON %}
     <div class="button-wrapper">
-        {% include "templates/sign-in-using.html" %}
+        {{ sign_in_using() }}
     </div>
 {% else %}
     {% if len(emails) == 0 %}

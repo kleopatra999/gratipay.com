@@ -35,7 +35,7 @@ suppress_sidebar = True
 
         <p>{{ _("Sign in to finish connecting your email.") }}</p>
 
-        <p>{% include "templates/sign-in-using.html" %}</p>
+        <p>{{ sign_in_using() }}</p>
     {% elif user.participant != participant %}
         <h1>{{ _("Wrong Account") }}</h1>
 
