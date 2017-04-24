@@ -42,8 +42,8 @@ class TestPages(Harness):
         i = len(self.client.www_root)
         urls = []
         for spt in find_files(self.client.www_root, '*.spt'):
-            url = spt[i:-4].replace('/%team/', '/alice/') \
-                           .replace('/alice/%sub', '/alice/foo') \
+            url = spt[i:-4].replace('/%team/', '/Gratipay/') \
+                           .replace('/Gratipay/%sub', '/alice/foo') \
                            .replace('/~/%username/', '/~alice/') \
                            .replace('/for/%slug/', '/for/wonderland/') \
                            .replace('/%platform/', '/github/') \
