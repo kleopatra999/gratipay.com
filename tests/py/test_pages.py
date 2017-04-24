@@ -72,7 +72,9 @@ class TestPages(Harness):
                     raise
             assert r.code != 404
             assert r.code < 500
-            assert not overescaping_re.search(r.body.decode('utf8'))
+            type_in = lambda *x: any([r.headers['Content-Type'].startswith(y) for y in x])
+            if r.code == 200 and type_in('text', 'application/json'):
+                assert not overescaping_re.search(r.body.decode('utf8'))
 
     def test_anon_can_browse(self):
         self.browse()
