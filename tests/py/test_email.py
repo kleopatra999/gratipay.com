@@ -1,7 +1,9 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 import json
+import Queue
 import sys
+import threading
 import urllib
 
 from pytest import raises
@@ -768,3 +770,40 @@ class PackageLinking(VerificationBase):
         assert foo.team == foo.team
         assert bar.team == bar.team
         assert foo.team != bar.team
+
+
+    def test_finishing_email_verification_is_thread_safe(self):
+        foo = self.make_package()
+        self.alice.start_email_verification(self.address, foo)
+        nonce = self.alice.get_email(self.address).nonce
+
+        results = {}
+        def finish():
+            key = threading.current_thread().ident
+            results[key] = self.alice.finish_email_verification(self.address, nonce)
+
+        def t():
+            t = threading.Thread(target=finish)
+            t.daemon = True
+            return t
+
+        go = Queue.Queue()
+        def monkey(self, *a, **kw):
+            old_ensure_team(self, *a, **kw)
+            go.get()
+        old_ensure_team = Package.ensure_team
+        Package.ensure_team = monkey
+
+        try:
+            a, b = t(), t()
+            a.start()
+            b.start()
+            go.put('')
+            go.put('')
+            b.join()
+            a.join()
+        finally:
+            Package.ensure_team = old_ensure_team
+
+        assert results[a.ident] == _email.VERIFICATION_SUCCEEDED
+        assert results[b.ident] == _email.VERIFICATION_REDUNDANT
