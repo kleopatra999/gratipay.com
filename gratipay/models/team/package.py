@@ -16,4 +16,7 @@ class Package(object):
 
 
     def _load_package(self, cursor):
-        return cursor.one('SELECT p.*::packages FROM packages p WHERE p.team_id=%s', (self.id,))
+        return cursor.one( 'SELECT p.*::packages FROM packages p WHERE p.id='
+                           '(SELECT package_id FROM teams_to_packages tp WHERE tp.team_id=%s)'
+                         , (self.id,)
+                          )

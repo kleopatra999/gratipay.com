@@ -76,10 +76,13 @@ class Package(Model):
                               , owner=owner
                               , _cursor=cursor
                                )
-            cursor.run('UPDATE packages SET team_id=%s WHERE id=%s', (team.id, self.id))
-            self.set_attributes(team_id=team.id)
+            cursor.run('INSERT INTO teams_to_packages (team_id, package_id) '
+                       'VALUES (%s, %s)', (team.id, self.id))
         return team
 
 
     def _load_team(self, cursor):
-        return cursor.one('SELECT t.*::teams FROM teams t WHERE t.id=%s', (self.team_id,))
+        return cursor.one( 'SELECT t.*::teams FROM teams t WHERE t.id='
+                           '(SELECT team_id FROM teams_to_packages tp WHERE tp.package_id=%s)'
+                         , (self.id,)
+                          )

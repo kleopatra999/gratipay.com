@@ -9,6 +9,9 @@ BEGIN;
     , UNIQUE(nonce, package_id)
      );
 
-    ALTER TABLE packages ADD COLUMN team_id bigint UNIQUE REFERENCES teams(id) ON DELETE RESTRICT;
+    CREATE TABLE teams_to_packages
+    ( team_id       bigint UNIQUE REFERENCES teams(id) ON DELETE RESTRICT
+    , package_id    bigint UNIQUE REFERENCES packages(id) ON DELETE RESTRICT
+     );
 
 END;

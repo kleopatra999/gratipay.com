@@ -51,6 +51,15 @@ class Linking(Harness):
         bar = self.make_package(name='bar')
         raises( IntegrityError
               , self.db.run
-              , 'UPDATE packages SET team_id=%s WHERE id=%s'
+              , 'INSERT INTO teams_to_packages (team_id, package_id) VALUES (%s, %s)'
               , (team.id, bar.id)
+               )
+
+    def test_package_can_only_be_linked_from_one_team(self):
+        alice, package, team = self.test_can_link_to_a_new_team()
+        bar = self.make_team(name='Bar')
+        raises( IntegrityError
+              , self.db.run
+              , 'INSERT INTO teams_to_packages (team_id, package_id) VALUES (%s, %s)'
+              , (bar.id, package.id)
                )

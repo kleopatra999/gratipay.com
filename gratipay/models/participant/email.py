@@ -231,7 +231,7 @@ class Email(object):
         if '' in (email.strip(), nonce.strip()):
             return VERIFICATION_MISSING
         with self.db.get_cursor() as cursor:
-            record = self.get_email(email, cursor)
+            record = self.get_email(email, cursor, and_lock=True)
             if record is None:
                 return VERIFICATION_FAILED
             packages = self.get_packages_claiming(cursor, nonce)
@@ -294,15 +294,19 @@ class Email(object):
                                )
 
 
-    def get_email(self, address, cursor=None):
+    def get_email(self, address, cursor=None, and_lock=False):
         """Return a record for a single email address on file for this participant.
+
+        :param unicode address: the email address for which to get a record
+        :param Cursor cursor: a database cursor; if ``None``, we'll use ``self.db``
+        :param and_lock: if True, we will acquire a write-lock on the email record before returning
+        :returns: a database record (a named tuple)
+
         """
-        return (cursor or self.db).one("""
-            SELECT *
-              FROM emails
-             WHERE participant_id=%s
-               AND address=%s
-        """, (self.id, address))
+        sql = 'SELECT * FROM emails WHERE participant_id=%s AND address=%s'
+        if and_lock:
+            sql += ' FOR UPDATE'
+        return (cursor or self.db).one(sql, (self.id, address))
 
 
     def get_emails(self):
