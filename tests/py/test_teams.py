@@ -449,7 +449,7 @@ class TestTeams(Harness):
         package = self.make_package(name='enterprise')
         with self.db.get_cursor() as c:
             team = package.get_or_create_linked_team(c, alice)
-        pytest.raises(AssertionError, team.update, field='foo')
+        pytest.raises(AssertionError, team.update, homepage='foo')
 
     def test_update_records_the_old_values_as_events(self):
         team = self.make_team(slug='enterprise', product_or_service='Product')
