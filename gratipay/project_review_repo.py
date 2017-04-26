@@ -8,6 +8,8 @@ import sys
 
 from aspen import log
 
+from gratipay.exceptions import NoTeams
+
 
 class ProjectReviewRepo(object):
 
@@ -21,7 +23,7 @@ class ProjectReviewRepo(object):
         """Given team objects, POST to GitHub, and return the URL of the new issue.
         """
         if not teams:
-            return
+            raise NoTeams()
         nteams = len(teams)
         if nteams == 1:
             title = teams[0].name

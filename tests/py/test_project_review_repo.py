@@ -5,8 +5,10 @@ from cStringIO import StringIO
 
 import mock
 from gratipay.testing import Harness
+from pytest import raises
 
 from gratipay.project_review_repo import ConsolePoster, ProjectReviewRepo
+from gratipay.exceptions import NoTeams
 
 
 class Tests(Harness):
@@ -49,3 +51,8 @@ class Tests(Harness):
             'https://gratipay.com/baz\\n\\n(This application will remain open '
             'for at least a week.)", "title": "foo and 2 other projects"}')
         assert kwargs['auth'] == ('cheeseburger', 'di3tc0ke')
+
+
+    def test_no_teams_raises(self):
+        class Env: __getattr__ = lambda *a: ''
+        raises(NoTeams, ProjectReviewRepo(Env()).create_issue)
