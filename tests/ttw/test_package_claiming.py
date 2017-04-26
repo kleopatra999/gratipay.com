@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-from gratipay.testing import BrowserHarness
+from gratipay.testing import BrowserHarness, P
 
 
-class TestSendConfirmationLink(BrowserHarness):
+class Test(BrowserHarness):
 
     def check(self, choice=0):
-        self.make_participant('bob', claimed_time='now')
-        self.sign_in('bob')
+        self.make_participant('alice', claimed_time='now')
+        self.sign_in('alice')
         self.visit('/on/npm/foo/')
         self.css('label')[0].click() # activate select
         self.css('label')[choice].click()
@@ -33,9 +33,7 @@ class TestSendConfirmationLink(BrowserHarness):
         self.make_package(emails=['alice@example.com', 'bob@example.com'])
         alice = self.make_participant('alice', claimed_time='now')
         self.add_and_verify_email(alice, 'alice@example.com', 'bob@example.com')
-
-        self.make_participant('bob', claimed_time='now')
-        self.sign_in('bob')
+        self.sign_in('alice')
         self.visit('/on/npm/foo/')
         self.css('label')[0].click()            # activate select
         self.css('label')[1].click()            # click second item
@@ -43,3 +41,28 @@ class TestSendConfirmationLink(BrowserHarness):
         self.css('ul')[0].has_class('open')     # still open
         self.css('button').has_class('disabled')
         assert self.db.all('select * from claims') == []
+
+
+    def test_that_claimed_packages_can_be_given_to(self):
+        package = self.make_package()
+        self.check()
+
+        alice = P('alice')
+        nonce = alice.get_email('alice@example.com').nonce
+        alice.finish_email_verification('alice@example.com', nonce)
+
+        self.make_participant('admin', claimed_time='now', is_admin=True)
+        self.sign_in('admin')
+        self.visit(package.team.url_path)
+        self.css('#status-knob select').select('approved')
+        self.css('#status-knob button').click()
+
+        self.make_participant('bob', claimed_time='now')
+        self.sign_in('bob')
+        self.visit('/on/npm/foo/')
+
+        self.css('.your-payment button.edit').click()
+        self.wait_for('.your-payment input.amount').fill('10')
+        self.css('.your-payment button.save').click()
+        assert self.wait_for_success() == 'Payment changed to $10.00 per week. ' \
+                                          'Thank you so much for supporting foo!'
