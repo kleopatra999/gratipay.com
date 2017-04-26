@@ -1,17 +1,16 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-import uuid
-
-from gratipay.models.team import Team
 from postgres.orm import Model
+
+from .team import Team
 
 
 NPM = 'npm'  # We are starting with a single package manager. If we see
              # traction we will expand.
 
 
-class Package(Model):
+class Package(Model, Team):
     """Represent a gratipackage. :-)
 
     Packages are entities on open source package managers; `npm
@@ -58,72 +57,3 @@ class Package(Model):
         """
         return cls.db.one("SELECT packages.*::packages FROM packages "
                           "WHERE package_manager=%s and name=%s", (package_manager, name))
-
-
-    # Team
-    # ====
-
-    @property
-    def team(self):
-        """A computed attribute, the :py:class:`~gratipay.models.team.Team`
-        linked to this package if there is one, otherwise ``None``. Makes a
-        database call.
-        """
-        return self.load_team(self.db)
-
-
-    def load_team(self, cursor):
-        """Given a database cursor, return a
-        :py:class:`~gratipay.models.team.Team` if there is one linked to this
-        package, or ``None`` if not.
-        """
-        return cursor.one( 'SELECT t.*::teams FROM teams t WHERE t.id='
-                           '(SELECT team_id FROM teams_to_packages tp WHERE tp.package_id=%s)'
-                         , (self.id,)
-                          )
-
-
-    def get_or_create_linked_team(self, cursor, owner):
-        """Given a db cursor and :py:class:`participant`, return a
-        :py:class:`~gratipay.models.team.team`.
-        """
-        team = self.load_team(cursor)
-        if team:
-            return team
-
-        def slug_options():
-            yield self.name
-            for i in range(1, 10):
-                yield '{}-{}'.format(self.name, i)
-            yield uuid.uuid4().hex
-
-        for slug in slug_options():
-            if cursor.one('SELECT count(*) FROM teams WHERE slug=%s', (slug,)) == 0:
-                break
-
-        team = Team.insert( slug=slug
-                          , slug_lower=slug.lower()
-                          , name=slug
-                          , homepage='https://www.npmjs.com/package/' + self.name
-                          , product_or_service=self.description
-                          , owner=owner
-                          , _cursor=cursor
-                           )
-        cursor.run('INSERT INTO teams_to_packages (team_id, package_id) '
-                   'VALUES (%s, %s)', (team.id, self.id))
-        self.app.add_event( cursor
-                          , 'package'
-                          , dict(id=self.id, action='link', values=dict(team_id=team.id))
-                           )
-        return team
-
-
-    def unlink_team(self, cursor):
-        """Given a db cursor, unlink the team associated with this package
-        (it's a bug if called with no team linked).
-        """
-        cursor.run('DELETE FROM teams_to_packages WHERE package_id=%s', (self.id,))
-        self.app.add_event( cursor
-                          , 'package'
-                          , dict(id=self.id, action='unlink', values=dict(team_id=self.team.id))
-                           )

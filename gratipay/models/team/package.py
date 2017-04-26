@@ -3,7 +3,9 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 
 class Package(object):
-    """A :py:class:`~gratipay.models.team.Team` can be associated with :py:class:`Package`.
+    """A :py:class:`~gratipay.models.team.Team` can have a
+    :py:class:`~gratipay.models.package.Package` associated with it.
+    Linking/unlinking API is over on ``Package``.
     """
 
     @property
@@ -12,10 +14,14 @@ class Package(object):
         :py:class:`~gratipay.models.package.Package` linked to this team if
         there is one, otherwise ``None``. Makes a database call.
         """
-        return self._load_package(self.db)
+        return self.load_package(self.db)
 
 
-    def _load_package(self, cursor):
+    def load_package(self, cursor):
+        """Given a database cursor, return a
+        :py:class:`~gratipay.models.package.Package` if there is one linked to
+        this team, or ``None`` if not.
+        """
         return cursor.one( 'SELECT p.*::packages FROM packages p WHERE p.id='
                            '(SELECT package_id FROM teams_to_packages tp WHERE tp.team_id=%s)'
                          , (self.id,)
