@@ -13,6 +13,7 @@ from postgres.orm import Model
 from .available import Available
 from .closing import Closing
 from .membership import Membership
+from .package import Package
 from .takes import Takes
 from .tip_migration import TipMigration
 
@@ -36,7 +37,7 @@ def slugize(name):
     return slug
 
 
-class Team(Model, Available, Closing, Membership, Takes, TipMigration):
+class Team(Model, Available, Closing, Membership, Package, Takes, TipMigration):
     """Represent a Gratipay team.
     """
 
@@ -98,9 +99,10 @@ class Team(Model, Available, Closing, Membership, Takes, TipMigration):
 
     @classmethod
     def insert(cls, owner, **fields):
+        cursor = fields.pop('_cursor') if '_cursor' in fields else None
         fields['slug_lower'] = fields['slug'].lower()
         fields['owner'] = owner.username
-        return cls.db.one("""
+        return (cursor or cls.db).one("""
 
             INSERT INTO teams
                         (slug, slug_lower, name, homepage,
