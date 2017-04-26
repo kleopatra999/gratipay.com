@@ -117,6 +117,16 @@ class Participant(Model, Email, Identity):
         """.format(thing), (value,))
 
 
+    # URLs
+    # ====
+
+    @property
+    def url_path(self):
+        """The path part of the URL for this participant on Gratipay.
+        """
+        return '/~{}/'.format(self.username)
+
+
     # Session Management
     # ==================
 
