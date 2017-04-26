@@ -66,14 +66,27 @@ class Package(Model):
         linked to this package if there is one, otherwise ``None``. Makes a
         database call.
         """
-        return self._load_team(self.db)
+        return self.load_team(self.db)
 
 
-    def ensure_team(self, cursor, owner):
-        """Given a db cursor and :py:class:`Participant`, insert into ``teams`` if need be.
+    def load_team(self, cursor):
+        """Given a database cursor, return a
+        :py:class:`~gratipay.models.team.Team` if there is one linked to this
+        package, or ``None`` if not.
         """
-        if self._load_team(cursor):
-            return
+        return cursor.one( 'SELECT t.*::teams FROM teams t WHERE t.id='
+                           '(SELECT team_id FROM teams_to_packages tp WHERE tp.package_id=%s)'
+                         , (self.id,)
+                          )
+
+
+    def get_or_create_linked_team(self, cursor, owner):
+        """Given a db cursor and :py:class:`participant`, return a
+        :py:class:`~gratipay.models.team.team`.
+        """
+        team = self.load_team(cursor)
+        if team:
+            return team
 
         def slug_options():
             yield self.name
@@ -82,23 +95,17 @@ class Package(Model):
             yield uuid.uuid4().hex
 
         for slug in slug_options():
-            if cursor.one('SELECT count(*) FROM teams WHERE slug=%s', (slug,)) > 0:
-                continue
-            team = Team.insert( slug=slug
-                              , slug_lower=slug.lower()
-                              , name=slug
-                              , homepage=''
-                              , product_or_service=''
-                              , owner=owner
-                              , _cursor=cursor
-                               )
-            cursor.run('INSERT INTO teams_to_packages (team_id, package_id) '
-                       'VALUES (%s, %s)', (team.id, self.id))
-            break
+            if cursor.one('SELECT count(*) FROM teams WHERE slug=%s', (slug,)) == 0:
+                break
 
-
-    def _load_team(self, cursor):
-        return cursor.one( 'SELECT t.*::teams FROM teams t WHERE t.id='
-                           '(SELECT team_id FROM teams_to_packages tp WHERE tp.package_id=%s)'
-                         , (self.id,)
-                          )
+        team = Team.insert( slug=slug
+                          , slug_lower=slug.lower()
+                          , name=slug
+                          , homepage='https://www.npmjs.com/package/' + self.name
+                          , product_or_service=self.description
+                          , owner=owner
+                          , _cursor=cursor
+                           )
+        cursor.run('INSERT INTO teams_to_packages (team_id, package_id) '
+                   'VALUES (%s, %s)', (team.id, self.id))
+        return team

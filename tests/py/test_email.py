@@ -789,10 +789,11 @@ class PackageLinking(VerificationBase):
 
         go = Queue.Queue()
         def monkey(self, *a, **kw):
-            old_ensure_team(self, *a, **kw)
+            team = old_get_or_create_linked_team(self, *a, **kw)
             go.get()
-        old_ensure_team = Package.ensure_team
-        Package.ensure_team = monkey
+            return team
+        old_get_or_create_linked_team = Package.get_or_create_linked_team
+        Package.get_or_create_linked_team = monkey
 
         try:
             a, b = t(), t()
@@ -803,7 +804,7 @@ class PackageLinking(VerificationBase):
             b.join()
             a.join()
         finally:
-            Package.ensure_team = old_ensure_team
+            Package.get_or_create_linked_team = old_get_or_create_linked_team
 
         assert results[a.ident] == _email.VERIFICATION_SUCCEEDED
         assert results[b.ident] == _email.VERIFICATION_REDUNDANT

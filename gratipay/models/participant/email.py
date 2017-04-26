@@ -283,7 +283,7 @@ class Email(object):
         cursor.run('DELETE FROM claims WHERE nonce=%s', (nonce,))
         package_ids = []
         for package in packages:
-            package.ensure_team(cursor, self)
+            package.get_or_create_linked_team(cursor, self)
             package_ids.append(package.id)
         self.app.add_event( cursor
                           , 'participant'

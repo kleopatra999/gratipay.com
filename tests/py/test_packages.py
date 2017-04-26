@@ -25,8 +25,7 @@ class Linking(Harness):
         alice = self.make_participant('alice')
         foo = self.make_package()
         with self.db.get_cursor() as c:
-            foo.ensure_team(c, alice)
-            team = foo._load_team(c)
+            team = foo.get_or_create_linked_team(c, alice)
         return alice, foo, team
 
     def test_package_team_is_none(self):
@@ -46,8 +45,7 @@ class Linking(Harness):
         alice, package, team = self.link()
         for i in range(5):
             with self.db.get_cursor() as c:
-                package.ensure_team(c, alice)
-                assert package._load_team(c) == team
+                assert package.get_or_create_linked_team(c, alice) == team
 
     def test_team_can_only_be_linked_from_one_package(self):
         _ , _, team = self.link()
