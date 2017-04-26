@@ -88,7 +88,3 @@ class NegativeBalance(Exception):
 
 class NotWhitelisted(Exception): pass
 class NoPackages(Exception): pass
-
-class OutOfOptions(Exception):
-    """Raised when an attempt to auto-name a team fails.
-    """

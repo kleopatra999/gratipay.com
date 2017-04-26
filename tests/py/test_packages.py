@@ -2,7 +2,6 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 import mock
-from gratipay.exceptions import OutOfOptions
 from gratipay.models.package import NPM, Package
 from gratipay.testing import Harness
 from psycopg2 import IntegrityError
@@ -78,10 +77,10 @@ class Linking(Harness):
         assert team.slug == 'foo-1'
 
     @mock.patch('gratipay.models.package.uuid')
-    def test_linking_team_gives_up_on_names_eventually(self, uuid):
+    def test_linking_team_drops_back_to_uuid4_eventually(self, uuid):
+        uuid.uuid4.return_value.hex = 'deadbeef-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
         self.make_team(name='foo')                  # take `foo`
         for i in range(1, 10):
             self.make_team(name='foo-{}'.format(i)) # take `foo-{1-9}`
-        self.make_team(name='deadbeef')             # take `deadbeef`(!)
-        uuid.uuid4.return_value = 'deadbeef'        # force-try `deadbeef`
-        raises(OutOfOptions, self.link)
+        _, _, team = self.link()
+        assert team.slug == 'deadbeef-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
