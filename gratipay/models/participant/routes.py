@@ -26,11 +26,21 @@ class Routes(object):
     def has_payout_route(self):
         """A boolean computed property, whether the participant has a known-working payout route.
         """
+        return bool(self.get_payout_routes(good_only=True))
+
+    def get_payout_routes(self, good_only=False, cursor=None):
+        """Return a list of payout routes. If ``good_only`` evaluates to rue then only
+        known-working payout routes are included.
+        """
+        out = []
         for network in ('paypal',):
-            route = ExchangeRoute.from_network(self, network)
-            if route and not route.error:
-                return True
-        return False
+            route = ExchangeRoute.from_network(self, network, cursor)
+            if not route:
+                continue
+            if good_only and route.error:
+                continue
+            out.append(route)
+        return out
 
     def get_braintree_account(self):
         """Fetch or create a braintree account for this participant.
