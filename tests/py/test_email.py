@@ -30,7 +30,7 @@ class Alice(QueuedEmailHarness):
         participant.start_email_verification(address)
         nonce = participant.get_email(address).nonce
         result = participant.finish_email_verification(address, nonce)
-        assert result == (_email.VERIFICATION_SUCCEEDED, [])
+        assert result == (_email.VERIFICATION_SUCCEEDED, [], False)
         if _flush:
             self.app.email_queue.flush()
 
@@ -145,7 +145,7 @@ class TestEndpoints(Alice):
         self.hit_email_spt('add-email', 'alice@example.com')
         nonce = 'fake-nonce'
         result = self.alice.finish_email_verification('alice@gratipay.com', nonce)
-        assert result == (_email.VERIFICATION_FAILED, None)
+        assert result == (_email.VERIFICATION_FAILED, None, None)
         self.hit_verify_spt('alice@example.com', nonce)
         expected = None
         actual = P('alice').email_address
@@ -157,7 +157,7 @@ class TestEndpoints(Alice):
         nonce = self.alice.get_email(address).nonce
         self.alice.finish_email_verification(address, nonce)
         result = self.alice.finish_email_verification(address, nonce)
-        assert result == (_email.VERIFICATION_REDUNDANT, None)
+        assert result == (_email.VERIFICATION_REDUNDANT, None, None)
 
     def test_verify_email_expired_nonce_fails(self):
         address = 'alice@example.com'
@@ -169,7 +169,7 @@ class TestEndpoints(Alice):
         """, (self.alice.id,))
         nonce = self.alice.get_email(address).nonce
         result = self.alice.finish_email_verification(address, nonce)
-        assert result == (_email.VERIFICATION_FAILED, None)
+        assert result == (_email.VERIFICATION_FAILED, None, None)
         actual = P('alice').email_address
         assert actual == None
 
@@ -182,12 +182,12 @@ class TestEndpoints(Alice):
     def test_empty_email_fails(self):
         for empty in ('', '    '):
             result = self.alice.finish_email_verification(empty, 'foobar')
-            assert result == (_email.VERIFICATION_FAILED, None)
+            assert result == (_email.VERIFICATION_FAILED, None, None)
 
     def test_empty_nonce_fails(self):
         for empty in ('', '    '):
             result = self.alice.finish_email_verification('foobar', empty)
-            assert result == (_email.VERIFICATION_FAILED, None)
+            assert result == (_email.VERIFICATION_FAILED, None, None)
 
     def test_email_verification_is_backwards_compatible(self):
         """Test email verification still works with unencoded email in verification link.
@@ -550,13 +550,13 @@ class StartEmailVerification(Alice):
         assert emails() == [self.alice.id, bob.id]
 
         result = self.alice.finish_email_verification('alice@example.com', anonce)
-        assert result == (_email.VERIFICATION_SUCCEEDED, [foo])
+        assert result == (_email.VERIFICATION_SUCCEEDED, [foo], True)
 
         assert claims() == {}
         assert emails() == [self.alice.id]
 
         result = bob.finish_email_verification('alice@example.com', bnonce)
-        assert result == (_email.VERIFICATION_FAILED, None)
+        assert result == (_email.VERIFICATION_FAILED, None, None)
 
 
 class RemoveEmail(Alice):
@@ -740,7 +740,7 @@ class PackageLinking(VerificationBase):
 
         # email?
         packages = [Package.from_names(NPM, name) for name in package_names]
-        assert result == (_email.VERIFICATION_SUCCEEDED, packages)
+        assert result == (_email.VERIFICATION_SUCCEEDED, packages, bool(packages))
         assert self.alice.email_address == P('alice').email_address == self.address
 
         # database?
@@ -802,11 +802,11 @@ class PackageLinking(VerificationBase):
         bob = self.make_participant('bob', claimed_time='now')
         bob.start_email_verification(self.address, foo)
         result = bob.finish_email_verification(self.address, nonce)  # using alice's nonce, even!
-        assert result == (_email.VERIFICATION_FAILED, None)
+        assert result == (_email.VERIFICATION_FAILED, None, None)
         assert len(bob.get_teams()) == 0
 
         result = self.alice.finish_email_verification(self.address, nonce)
-        assert result == (_email.VERIFICATION_SUCCEEDED, [foo])
+        assert result == (_email.VERIFICATION_SUCCEEDED, [foo], True)
         teams = self.alice.get_teams()
         assert len(teams) == 1
         assert teams[0].package == foo
@@ -821,6 +821,15 @@ class PackageLinking(VerificationBase):
         assert foo.team == foo.team
         assert bar.team == bar.team
         assert foo.team != bar.team
+
+
+    def test_finishing_email_verification_with_preexisting_paypal_doesnt_update_paypal(self):
+        self.add_and_verify_email(self.alice, self.address)
+        self.alice.set_paypal_address(self.address)
+        nonce = self.start(self.address, 'foo')
+        result = self.alice.finish_email_verification(self.address, nonce)
+        foo = Package.from_names('npm', 'foo')
+        assert result == (_email.VERIFICATION_SUCCEEDED, [foo], False)
 
 
     def test_finishing_email_verification_is_thread_safe(self):
@@ -857,5 +866,5 @@ class PackageLinking(VerificationBase):
         finally:
             Package.get_or_create_linked_team = old_get_or_create_linked_team
 
-        assert results[a.ident] == (_email.VERIFICATION_SUCCEEDED, [foo])
-        assert results[b.ident] == (_email.VERIFICATION_REDUNDANT, None)
+        assert results[a.ident] == (_email.VERIFICATION_SUCCEEDED, [foo], True)
+        assert results[b.ident] == (_email.VERIFICATION_REDUNDANT, None, None)
