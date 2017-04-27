@@ -73,9 +73,24 @@ suppress_sidebar = True
             <h1>{{ _("Bad Info") }}</h1>
             <p>{{ _("Sorry, that's a bad or expired link. You'll need to start over.") }}</p>
         {% endif %}
-        <a href="/{{ participant.username }}/emails/">{{ _("View your email addresses") }}.</a>
+
+        <p><a href="/{{ participant.username }}/emails/">
+            {{ _("View your email addresses") }}.</a>
+        </p>
+
+        {% if paypal_updated %}
+        <h2>{{ _("Withdrawals") }}</h2>
+        <p class="withdrawal-notice">
+            {{ _( "We will send your money via PayPal to {email_address} ({a}update{_a})."
+                , email_address=("<b>%s</b>"|safe) % email_address
+                , a='<a href="../routes/paypal">'|safe
+                , _a='</a>'|safe
+                 ) }}
+        </p>
+        {% endif %}
+
         {% if project_list %}
-        <h2>{{ _("Your New Projects") }}</h2>
+        <h2>{{ _("New Projects") }}</h2>
         <table class="listing">
         {% include "templates/project-listing.html"  %}
         </table>

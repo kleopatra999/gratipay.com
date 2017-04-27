@@ -69,13 +69,14 @@ class Test(BrowserHarness):
                                           'Thank you so much for supporting foo!'
 
 
-    def test_visiting_verify_link_shows_packages_newly_claimed(self):
+    def test_visiting_verify_link_shows_helpful_information(self):
         self.make_package()
         self.check()
 
         link = pickle.loads(self.db.one('select context from email_queue'))['link']
         link = link[len(self.base_url):]  # strip because visit will add it back
 
-        self.sign_in('alice')
         self.visit(link)
+        assert self.css('.withdrawal-notice a').text == 'update'
+        assert self.css('.withdrawal-notice b').text == 'alice@example.com'
         assert self.css('.listing-name').text == 'foo'
