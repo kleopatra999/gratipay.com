@@ -6,8 +6,7 @@ import re
 from decimal import Decimal
 
 import requests
-from aspen import json, log
-from gratipay.exceptions import InvalidTeamName
+from aspen import json, log, Response
 from postgres.orm import Model
 
 from .available import Available
@@ -16,6 +15,8 @@ from .membership import Membership
 from .package import Package
 from .takes import Takes
 from .tip_migration import TipMigration
+from ...exceptions import InvalidTeamName
+from ...utils import canonicalize
 
 
 # Should have at least one letter.
@@ -69,6 +70,13 @@ class Team(Model, Available, Closing, Membership, Package, Takes, TipMigration):
     #: :py:meth:`~gratipay.models.participant.Participant.set_payment_instruction`.
 
     nreceiving_from = 0
+
+
+    @property
+    def url_path(self):
+        """The path part of the URL for this team on Gratipay.
+        """
+        return '/{}/'.format(self.slug)
 
 
     # Constructors
@@ -308,12 +316,14 @@ class Team(Model, Available, Closing, Membership, Package, Takes, TipMigration):
                            , ndistributing_to=r.ndistributing_to
                             )
 
+
     @property
     def status(self):
         return { None: 'unreviewed'
                , False: 'rejected'
                , True: 'approved'
                 }[self.is_approved]
+
 
     def to_dict(self):
         return {
@@ -369,3 +379,35 @@ class Team(Model, Available, Closing, Membership, Package, Takes, TipMigration):
             with self.db.get_connection() as c:
                 image = c.lobject(oid, mode='rb').read()
         return image
+
+
+def cast(path_part, state):
+    """This is an Aspen typecaster. Given a slug and a state dict, raise
+    Response or return Team.
+    """
+    redirect = state['website'].redirect
+    request = state['request']
+    user = state['user']
+    slug = path_part
+    qs = request.line.uri.querystring
+
+    try:
+        team = Team.from_slug(slug)
+    except:
+        raise Response(400, 'bad slug')
+
+    if team is None:
+        # Try to redirect to a Participant.
+        from gratipay.models.participant import Participant # avoid circular import
+        participant = Participant.from_username(slug)
+        if participant is not None:
+            qs = '?' + request.qs.raw if request.qs.raw else ''
+            redirect('/~' + request.path.raw[1:] + qs)
+        raise Response(404)
+
+    canonicalize(redirect, request.line.uri.path.raw, '/', team.slug, slug, qs)
+
+    if team.is_closed and not user.ADMIN:
+        raise Response(410)
+
+    return team

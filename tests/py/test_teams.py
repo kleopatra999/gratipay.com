@@ -510,3 +510,17 @@ class TestTeams(Harness):
 
     def test_slugize_disallows_backslashes(self):
         self.assertRaises(InvalidTeamName, slugize, 'abc\def')
+
+
+class Cast(Harness):
+
+    def test_casts_team(self):
+        team = self.make_team()
+        state = self.client.GET('/TheEnterprise/', return_after='cast', want='state')
+        assert state['request'].path['team'] == team
+
+    def test_canonicalizes(self):
+        self.make_team()
+        response = self.client.GxT('/theenterprise/', return_after='cast')
+        assert response.code == 302
+        assert response.headers['Location'] == '/TheEnterprise/'

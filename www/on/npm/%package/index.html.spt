@@ -1,17 +1,22 @@
 import requests
 
 from aspen import Response
-from gratipay.utils import markdown
+from gratipay.utils import markdown, truncate
 from gratipay.models.package import Package
+
 [---]
+
 package_name = request.path['package']
 package = Package.from_names('npm', package_name)
 if package is None:
     raise Response(404)
-banner = package_name
+elif package.team:
+    website.redirect(package.team.url_path)
+
 page_id = "package"
 suppress_sidebar = True
 url = 'https://npmjs.com/package/' + package.name
+banner = package_name
 [---]
 {% extends "templates/base.html" %}
 
@@ -22,7 +27,7 @@ url = 'https://npmjs.com/package/' + package.name
         <p>{{ package.description }}</p>
         <img class="platform" src="{{ website.asset('npm-n.png') }}" />
     </div>
-    {{ super () }}
+    {{ super() }}
 </a>
 {% endblock %}
 
