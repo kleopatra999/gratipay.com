@@ -112,6 +112,7 @@ Gratipay.Dropdown = function(selector) {
             if (t > maxTopFactor) t = maxTopFactor;
             moveTo(t);
             scrollThrottle = null;
-        }, 12);
+        }, 12); // timeout arrived at experimentally; needs to feel instant
+                // while suppressing extraneous scroll events
     }
 };
