@@ -338,10 +338,10 @@ class Email(object):
         return (cursor or self.db).one(sql, (self.id, address))
 
 
-    def get_emails(self):
+    def get_emails(self, cursor=None):
         """Return a list of all email addresses on file for this participant.
         """
-        return self.db.all("""
+        return (cursor or self.db).all("""
             SELECT *
               FROM emails
              WHERE participant_id=%s
@@ -349,10 +349,10 @@ class Email(object):
         """, (self.id,))
 
 
-    def get_verified_email_addresses(self):
+    def get_verified_email_addresses(self, cursor=None):
         """Return a list of verified email addresses on file for this participant.
         """
-        return [email.address for email in self.get_emails() if email.verified]
+        return [email.address for email in self.get_emails(cursor) if email.verified]
 
 
     def remove_email(self, address):
