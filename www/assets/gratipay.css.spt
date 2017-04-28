@@ -34,6 +34,7 @@
 @import "scss/components/dropdown";
 @import "scss/components/emails";
 @import "scss/components/github-ribbon";
+@import "scss/components/important-thing-at-the-top";
 @import "scss/components/js-edit";
 @import "scss/components/linear_gradient";
 @import "scss/components/listing";

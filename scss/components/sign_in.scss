@@ -29,7 +29,7 @@
         border: 0;
         box-shadow: none;
         background: $green;
-        min-width: 140px;
+        min-width: 140px; /* centering on unclaimed package page is based on this */
         li {
             margin: 0;
             list-style: none;

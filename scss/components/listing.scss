@@ -27,12 +27,26 @@ table.listing {
             background: none !important;
             color: $green !important;
         }
-        img {
+        img.avatar {
             width: 48px;
             height: 48px;
             position: absolute;
             top: 8px;
             left: 0;
+        }
+        .package-manager {
+            position: absolute;
+            top: 40px;
+            left: 32px;
+            width: 16px;
+            height: 16px;
+            border-radius: 2px 0 0 0;
+            background: white;
+            img {
+                width: 14px;
+                height: 14px;
+                margin: 2px 0 0 2px;
+            }
         }
         .name {
             display: block;

@@ -2,7 +2,10 @@
 {% for i, project in enumerate(project_list, start=1) %}
     <tr>
         <td class="item">
-            <img src="{{ project.get_image_url('small') }}">
+            <img class="avatar" src="{{ project.get_image_url('small') }}">
+            {% if project.package %}
+            <div class="package-manager"><img src="{{ website.asset('npm-n.png') }}"></div>
+            {% endif %}
             <a class="name" href="/{{ project.slug }}/">{{ project.name }}</a>
 
             <div class="details{% if current_page == '~' %} profile{% endif %}">
