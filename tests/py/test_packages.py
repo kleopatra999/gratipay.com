@@ -72,7 +72,7 @@ class Linking(Harness):
         _, _, team = self.link()
         assert team.slug == 'foo-1'
 
-    @mock.patch('gratipay.models.package.uuid')
+    @mock.patch('gratipay.models.package.team.uuid')
     def test_linking_team_drops_back_to_uuid4_eventually(self, uuid):
         uuid.uuid4.return_value.hex = 'deadbeef-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
         self.make_team(name='foo')                  # take `foo`
