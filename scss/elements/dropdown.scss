@@ -1,0 +1,71 @@
+.gratipay-dropdown-wrapper {
+
+    position: relative;
+    height: 64px;
+
+    ul {
+
+        /* Opening and closing. */
+
+        li {
+            display: none;
+            &.selected {
+                display: block;
+            }
+        }
+        &.open {
+            li {
+                display: block;
+            }
+        }
+    }
+}
+
+.gratipay-dropdown {
+
+    /* Everything else. */
+
+    width: 66%;
+    background: white;
+    position: absolute;
+    left: 17%;
+
+    border-radius: 5px;
+    box-shadow: 2px 2px 8px $black;
+
+    li {
+        margin: 0;
+        list-style: none;
+        position: relative;
+        text-align: left;
+        height: 64px;
+
+        input {
+            display: none;
+        }
+        .listing-wrapper {
+            height: 64px;
+            label {
+                white-space: nowrap;
+                display: block;
+                height: 64px;
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                padding: 12px 24px 0 56px;
+                &.hover {
+                    color: $green ! important;
+                    cursor: pointer;
+                }
+            }
+            .listing-details {
+                display: block;
+                padding: 36px 24px 0 56px;
+                white-space: nowrap;
+            }
+        }
+    }
+}

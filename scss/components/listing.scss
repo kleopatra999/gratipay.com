@@ -1,9 +1,3 @@
-.sorry {
-    text-align: center;
-    font: normal 12px/15px $Ideal;
-    color: $medium-gray;
-}
-
 table.listing {
     width: 100%;
 
@@ -48,10 +42,8 @@ table.listing {
                 margin: 2px 0 0 2px;
             }
         }
-        .name {
+        .listing-name {
             display: block;
-            color: $black;
-            font: bold 20px/24px $Ideal;
             position: absolute;
             z-index: 1;
             top: 0;
@@ -60,7 +52,7 @@ table.listing {
             width: 100%;
             height: 100%;
         }
-        .details {
+        .listing-details {
             display: block;
 
             /* duplicate width/max-width from layouts#wrapper to get overflow to work */
@@ -72,7 +64,6 @@ table.listing {
 
             padding-left: 56px;
 
-            font: normal 12px/15px $Ideal;
             .owner a {
                 color: $medium-gray;
                 position: relative;
@@ -86,10 +77,6 @@ table.listing {
                 & * { display: inline; }
             }
 
-            a {
-                font-weight: normal;
-                text-decoration: underline;
-            }
         }
 
         &:hover {

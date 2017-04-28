@@ -1,5 +1,10 @@
 Gratipay.packages = {};
 
+Gratipay.packages.init = function() {
+    Gratipay.Dropdown('.package-emails');
+    $('button.apply').on('click', Gratipay.packages.post);
+};
+
 Gratipay.packages.post = function(e) {
     e.preventDefault();
     var $this = $(this);

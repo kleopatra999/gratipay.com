@@ -192,7 +192,7 @@ zip = zip
     {% endif %}
 
     {% if query and not (usernames or statements or emails or projects) %}
-    <p class="sorry">{{ _("Sorry, we didn't find anything matching your query.") }}</p>
+    <p class="note">{{ _("Sorry, we didn't find anything matching your query.") }}</p>
     {% endif %}
 
 {% endblock %}

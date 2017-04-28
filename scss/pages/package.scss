@@ -1,24 +1,19 @@
-#package {
-    p {
+#package #content {
+    text-align: center;
+
+    .instructions {
         text-align: center;
+        margin: 0 0 30px;
+        font-family: $Ideal;
     }
     .description {
         font: normal 18pt/24pt $Chronicle;
         &.long {
             font: normal 11pt/15pt $Chronicle;
         }
-        padding: 0 20%;
+        padding: 0 17%;
     }
-    #content .sign-in {
-        width: 1px;
-        margin-left: 50%;
-        position: relative;
-        left: -70px; /* there's a min-width of 140px on the ul */
-    }
-    .emails {
-        margin: 1em 0;
-        li {
-            list-style: none;
-        }
+    .button-wrapper {
+        margin: 38px auto 30px;
     }
 }

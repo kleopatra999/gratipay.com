@@ -266,6 +266,10 @@ class Email(object):
 
     def save_email_address(self, cursor, address):
         """Given an email address, modify the database.
+
+        This is where we actually mark the email address as verified.
+        Additionally, we clear out any competing claims to the same address.
+
         """
         cursor.run("""
             UPDATE emails
@@ -273,6 +277,12 @@ class Email(object):
              WHERE participant_id=%s
                AND address=%s
                AND verified IS NULL
+        """, (self.id, address))
+        cursor.run("""
+            DELETE
+              FROM emails
+             WHERE participant_id != %s
+               AND address=%s
         """, (self.id, address))
         if not self.email_address:
             self.set_primary_email(address, cursor)

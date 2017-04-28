@@ -413,7 +413,7 @@ def env():
         aspen.log_dammit("See ./default_local.env for hints.")
 
         aspen.log_dammit("=" * 42)
-        keys = ', '.join([key for key in env.malformed])
+        keys = ', '.join([key for key, value in env.malformed])
         raise BadEnvironment("Malformed envvar{}: {}.".format(plural, keys))
 
     if env.missing:
