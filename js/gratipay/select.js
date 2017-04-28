@@ -1,5 +1,5 @@
-Gratipay.Dropdown = function(selector) {
-    var $ul = $(selector);
+Gratipay.Select = function(selector) {
+    var $ul = $('ul', selector);
     var $labels = $('label', $ul);
 
     // state for vertical position
@@ -10,10 +10,8 @@ Gratipay.Dropdown = function(selector) {
     var hoverIndex = 0;     // int between 0 and $labels.length-1
     var cursorOffset = 0;   // negative or positive int
 
-    $('<div>').addClass('gratipay-dropdown-wrapper').insertAfter($ul).append($ul.remove());
-
     function unhover() {
-        $(this).removeClass('hover');
+        $(this).closest('li').removeClass('hover');
     }
 
     function hover() {
@@ -24,7 +22,7 @@ Gratipay.Dropdown = function(selector) {
 
         var $label = $(this);
         unhover.call($('.hover'), $ul);
-        $label.addClass('hover');
+        $label.closest('li').addClass('hover');
         if ($ul.hasClass('open'))
             cursorOffset = $labels.index($label) - Math.round(topFactor);
     }
@@ -39,7 +37,7 @@ Gratipay.Dropdown = function(selector) {
 
             // Don't call the hover function, because we don't want to
             // change cursorOffset. Just apply the class.
-            $labels.eq(hoverIndex).addClass('hover');
+            $labels.eq(hoverIndex).closest('li').addClass('hover');
         }
         topFactor = t;
     }
@@ -53,8 +51,9 @@ Gratipay.Dropdown = function(selector) {
 
     function close($label) {
         if ($label) {
+            if ($label.closest('li').hasClass('disabled')) return;
             $('.selected', $ul).removeClass('selected')
-            $label.closest('li').addClass('selected');
+            $label.closest('li').addClass('selected').removeClass('hover');
         }
         $ul.css({'top': 0}).removeClass('open');
         $ul.unbind('mousewheel');
@@ -72,7 +71,7 @@ Gratipay.Dropdown = function(selector) {
         close();
     }
 
-    $('label', $ul).click(select).hover(hover, unhover);
+    $('li label', $ul).click(select).hover(hover, unhover);
     $('html').click(clear);
 
 

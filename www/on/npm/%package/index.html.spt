@@ -1,7 +1,7 @@
 import requests
 
 from aspen import Response
-from gratipay.utils import markdown, truncate
+from gratipay.utils import icons, markdown, truncate
 from gratipay.models.package import Package
 from gratipay.models.package.emails import PRIMARY, VERIFIED, UNVERIFIED, UNLINKED, OTHER
 
@@ -17,6 +17,10 @@ elif package.team:
 page_id = "package"
 suppress_sidebar = True
 banner = package_name
+
+if user.participant:
+    emails = package.classify_emails_for_participant(user.participant)
+    has_email_options = bool([x for x in emails if x[1] != OTHER])
 [---]
 {% extends "templates/base.html" %}
 
@@ -55,40 +59,58 @@ banner = package_name
 
 {% if user.ANON %}
     <div class="button-wrapper">
-        {% include "templates/sign-in-using.html" %}
+        {{ sign_in_using(button_class='large') }}
     </div>
 {% else %}
-    {% if len(package.emails) == 0 %}
+    {% if len(emails) == 0 %}
     <p class="note">{{ _("No email addresses on file.") }}</p>
     {% else %}
     <input type="hidden" name="package_id" value="{{ package.id }}">
-    <ul class="package-emails gratipay-dropdown">
-    {% set classified = package.classify_emails_for_participant(user.participant) %}
-    {% for i, (email, group) in enumerate(classified, start=1) %}
-        <li{% if i == 1 %} class="selected"{% endif %}>
-            <input type="radio" name="email" value="{{ email }}" id="email-{{i}}"
-                   {% if i == 1 %}checked{% endif %}>
-            <div class="listing-wrapper">
-                <label class="listing-name" for="email-{{ i }}">{{ email }}</label>
-                <div class="listing-details">
-                    <span class="i">{{ i }}</span>
-                    {% if group == PRIMARY %}
-                    <span>&middot; {{ _('Your primary email address') }}</span>
-                    {% elif group == VERIFIED %}
-                    <span>&middot; {{ _('Already linked to your account') }}</span>
-                    {% elif group in (UNVERIFIED, UNLINKED) %}
-                    <span>&middot; {{ _('Ready to link') }}</span>
-                    {% elif group == OTHER %}
-                    <span>&middot; {{ _('Already linked to another account') }}</span>
-                    {% endif %}
+    <div class="gratipay-select">
+        <ul>
+        {% for i, (email, group) in enumerate(emails, start=1) %}
+            <li class="{% if group == OTHER %}disabled{% endif %}
+                       {% if i == 1 %}selected{% endif %}">
+                <input type="radio" name="email" value="{{ email }}" id="email-{{i}}"
+                       {% if i == 1 %}checked{% endif %}>
+                <span class="icon">&#xe007;</span>
+                <div class="listing-wrapper">
+                    <label class="listing-name" for="email-{{ i }}">{{ email }}</label>
+                    <div class="listing-details">
+                        <span class="i">{{ i }}</span>
+                        <span>&middot;
+                        {% if group == OTHER %}
+                            <span class="status-icon failure">
+                                {{ icons.STATUS_ICONS['failure']|safe }}</span>
+                            {{ _('Linked to a different account') }}
+                        {% else %}
+                            {{ _('Ready to use') }}
+                            {% if group == PRIMARY %}
+                                &middot; <span class="status-icon feature">
+                                    {{ icons.STATUS_ICONS['feature']|safe }}</span>
+                                {{ _('Your primary email address') }}
+                            {% elif group == VERIFIED %}
+                                &middot; <span class="status-icon success">
+                                    {{ icons.STATUS_ICONS['success']|safe }}</span>
+                                {{ _('Linked to your account') }}
+                            {% elif group == UNVERIFIED %}
+                                &middot; <span class="status-icon warning">
+                                    {{ icons.STATUS_ICONS['warning']|safe }}</span>
+                                {{ _('Half-linked to your account') }}
+                            {% endif %}
+                        {% endif %}
+                    </div>
                 </div>
-            </div>
-        </li>
-    {% endfor %}
-    </ul>
+                <span class="arrow up"></span>
+                <span class="arrow down"></span>
+            </li>
+        {% endfor %}
+        </ul>
+    </div>
 
     <div class="button-wrapper">
-        <button type="submit" class="apply selected large">
+        <button type="submit" class="apply selected large"
+                {% if not has_email_options %} disabled{% endif %}>
             {{ _('Apply to accept payments') }}
         </button>
     </div>

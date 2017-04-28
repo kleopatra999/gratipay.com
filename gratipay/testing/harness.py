@@ -388,3 +388,12 @@ class Harness(unittest.TestCase):
              LIMIT 1
 
         """, (tipper, tippee), back_as=dict, default=default)['amount']
+
+
+    def add_and_verify_email(self, participant, *emails):
+        """Given a participant and some email addresses, add and verify them.
+        """
+        for email in emails:
+            participant.start_email_verification(email)
+            nonce = participant.get_email(email).nonce
+            participant.finish_email_verification(email, nonce)
