@@ -243,7 +243,8 @@ class Email(object):
             if (utcnow() - record.verification_start) > EMAIL_HASH_TIMEOUT:
                 return VERIFICATION_EXPIRED
             try:
-                self.finish_package_claims(cursor, nonce, *packages)
+                if packages:
+                    self.finish_package_claims(cursor, nonce, *packages)
                 self.save_email_address(cursor, email)
             except IntegrityError:
                 return VERIFICATION_STYMIED
@@ -280,11 +281,19 @@ class Email(object):
     def finish_package_claims(self, cursor, nonce, *packages):
         """Create teams if needed and associate them with the packages.
         """
-        cursor.run('DELETE FROM claims WHERE nonce=%s', (nonce,))
-        package_ids = []
+        if not packages:
+            raise NoPackages()
+
+        package_ids, teams, team_ids = [], [], []
         for package in packages:
-            package.ensure_team(cursor, self)
             package_ids.append(package.id)
+            team = package.get_or_create_linked_team(cursor, self)
+            teams.append(team)
+            team_ids.append(team.id)
+        review_url = self.app.project_review_repo.create_issue(*teams)
+
+        cursor.run('DELETE FROM claims WHERE nonce=%s', (nonce,))
+        cursor.run('UPDATE teams SET review_url=%s WHERE id=ANY(%s)', (review_url, team_ids,))
         self.app.add_event( cursor
                           , 'participant'
                           , dict( id=self.id

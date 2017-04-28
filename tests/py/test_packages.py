@@ -23,31 +23,27 @@ class Linking(Harness):
 
     def link(self):
         alice = self.make_participant('alice')
-        foo = self.make_package()
+        package = self.make_package()
         with self.db.get_cursor() as c:
-            foo.ensure_team(c, alice)
-            team = foo._load_team(c)
-        return alice, foo, team
+            team = package.get_or_create_linked_team(c, alice)
+        return alice, package, team
 
     def test_package_team_is_none(self):
-        foo = self.make_package()
-        assert foo.team is None
+        assert self.make_package().team is None
 
     def test_team_package_is_none(self):
-        foo = self.make_team()
-        assert foo.package is None
+        assert self.make_team().package is None
 
     def test_can_link_to_a_new_team(self):
-        _, foo, team = self.link()
-        assert team.package == foo
-        assert foo.team == team
+        _, package, team = self.link()
+        assert team.package == package
+        assert package.team == team
 
     def test_linking_is_idempotent(self):
         alice, package, team = self.link()
         for i in range(5):
             with self.db.get_cursor() as c:
-                package.ensure_team(c, alice)
-                assert package._load_team(c) == team
+                assert package.get_or_create_linked_team(c, alice) == team
 
     def test_team_can_only_be_linked_from_one_package(self):
         _ , _, team = self.link()
@@ -84,3 +80,20 @@ class Linking(Harness):
             self.make_team(name='foo-{}'.format(i)) # take `foo-{1-9}`
         _, _, team = self.link()
         assert team.slug == 'deadbeef-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+
+    def test_linked_team_takes_package_description(self):
+        _, _, team = self.link()
+        assert team.product_or_service == 'Foo fooingly.'
+
+    def test_linked_team_has_remote_package_url_as_homepage(self):
+        _, _, team = self.link()
+        assert team.homepage == 'https://www.npmjs.com/package/foo'
+
+    def test_review_url_doesnt_get_set_here(self):
+        _, _, team = self.link()
+        assert team.review_url is None
+
+    def test_closing_team_unlinks_package(self):
+        _, _, team = self.link()
+        team.close()
+        assert Package.from_names('npm', 'foo').team is None

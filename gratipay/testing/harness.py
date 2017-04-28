@@ -200,7 +200,7 @@ class Harness(unittest.TestCase):
         return team
 
 
-    def make_package(self, package_manager=NPM, name='foo', description='Foo',
+    def make_package(self, package_manager=NPM, name='foo', description='Foo fooingly.',
                                                                      emails=['alice@example.com']):
         """Factory for packages.
         """
