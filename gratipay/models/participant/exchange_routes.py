@@ -9,8 +9,12 @@ from ...billing.instruments import CreditCard
 from ...utils import is_card_expiring
 
 
-class Routes(object):
+class ExchangeRoutes(object):
+
     """Participants have payment routes to get money into and out of Gratipay.
+    This mixin supplies API to the Participant object for working with relevant
+    records in the ``exchange_routes`` table.
+
     """
 
 
@@ -34,11 +38,11 @@ class Routes(object):
 
 
     def get_payout_routes(self, good_only=False, cursor=None):
-        """Return a list of payout routes. If ``good_only`` evaluates to rue then only
-        known-working payout routes are included.
+        """Return a list of payout routes. If ``good_only`` evaluates to
+        ``True`` then only known-working payout routes are included.
         """
         out = []
-        for network in ('paypal',):
+        for network in ['paypal']:
             route = ExchangeRoute.from_network(self, network, cursor)
             if not route:
                 continue

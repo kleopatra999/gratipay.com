@@ -233,10 +233,14 @@ class Email(object):
 
 
     def finish_email_verification(self, email, nonce):
-        """Given an email address and a nonce as strings, return a tuple: (a
-        ``VERIFICATION_*`` constant, a list of packages for
-        ``VERIFICATION_SUCCEEDED`` or ``None`` otherwise, and a boolean
-        indicating whether the participant's PayPal address was updated)
+        """Given an email address and a nonce as strings, return a three-tuple:
+
+        - a ``VERIFICATION_*`` constant;
+        - a list of packages if ``VERIFICATION_SUCCEEDED`` (``None``
+          otherwise), and
+        - a boolean indicating whether the participant's PayPal address was
+          updated if applicable (``None`` if not).
+
         """
         if '' in (email.strip(), nonce.strip()):
             return VERIFICATION_FAILED, None, None
@@ -257,7 +261,8 @@ class Email(object):
                 if packages:
                     self.finish_package_claims(cursor, nonce, *packages)
                 self.save_email_address(cursor, email)
-                if packages and not self.get_payout_routes(good_only=True):
+                has_no_paypal = not self.get_payout_routes(good_only=True)
+                if packages and has_no_paypal:
                     self.set_paypal_address(email, cursor)
                     paypal_updated = True
             except IntegrityError:
