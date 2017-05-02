@@ -233,31 +233,41 @@ class Email(object):
 
 
     def finish_email_verification(self, email, nonce):
-        """Given an email address and a nonce as strings, return a tuple:
-        (a ``VERIFICATION_*`` constant, and a list of packages for
-        ``VERIFICATION_SUCCEEDED`` or ``None`` otherwise)
+        """Given an email address and a nonce as strings, return a three-tuple:
+
+        - a ``VERIFICATION_*`` constant;
+        - a list of packages if ``VERIFICATION_SUCCEEDED`` (``None``
+          otherwise), and
+        - a boolean indicating whether the participant's PayPal address was
+          updated if applicable (``None`` if not).
+
         """
         if '' in (email.strip(), nonce.strip()):
-            return VERIFICATION_FAILED, None
+            return VERIFICATION_FAILED, None, None
         with self.db.get_cursor() as cursor:
             record = self.get_email(email, cursor, and_lock=True)
             if record is None:
-                return VERIFICATION_FAILED, None
+                return VERIFICATION_FAILED, None, None
             packages = self.get_packages_claiming(cursor, nonce)
             if record.verified and not packages:
                 assert record.nonce is None  # and therefore, order of conditions matters
-                return VERIFICATION_REDUNDANT, None
+                return VERIFICATION_REDUNDANT, None, None
             if not constant_time_compare(record.nonce, nonce):
-                return VERIFICATION_FAILED, None
+                return VERIFICATION_FAILED, None, None
             if (utcnow() - record.verification_start) > EMAIL_HASH_TIMEOUT:
-                return VERIFICATION_FAILED, None
+                return VERIFICATION_FAILED, None, None
             try:
+                paypal_updated = False
                 if packages:
                     self.finish_package_claims(cursor, nonce, *packages)
                 self.save_email_address(cursor, email)
+                has_no_paypal = not self.get_payout_routes(good_only=True)
+                if packages and has_no_paypal:
+                    self.set_paypal_address(email, cursor)
+                    paypal_updated = True
             except IntegrityError:
-                return VERIFICATION_STYMIED, None
-            return VERIFICATION_SUCCEEDED, packages
+                return VERIFICATION_STYMIED, None, None
+            return VERIFICATION_SUCCEEDED, packages, paypal_updated
 
 
     def get_packages_claiming(self, cursor, nonce):
@@ -338,10 +348,10 @@ class Email(object):
         return (cursor or self.db).one(sql, (self.id, address))
 
 
-    def get_emails(self):
+    def get_emails(self, cursor=None):
         """Return a list of all email addresses on file for this participant.
         """
-        return self.db.all("""
+        return (cursor or self.db).all("""
             SELECT *
               FROM emails
              WHERE participant_id=%s
@@ -349,10 +359,10 @@ class Email(object):
         """, (self.id,))
 
 
-    def get_verified_email_addresses(self):
+    def get_verified_email_addresses(self, cursor=None):
         """Return a list of verified email addresses on file for this participant.
         """
-        return [email.address for email in self.get_emails() if email.verified]
+        return [email.address for email in self.get_emails(cursor) if email.verified]
 
 
     def remove_email(self, address):
