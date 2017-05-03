@@ -57,6 +57,25 @@ class Tests(Harness):
         assert package.name == 'testing-package'
         assert package.description == 'A package for testing'
         assert package.name == 'testing-package'
+        assert package.emails == ['alice@example.com']  # just maintainers
+
+
+    def test_sn_dedupes_emails(self):
+        load(br'''
+        { "_updated": 1234567890
+        , "testing-package":
+            { "name":"testing-package"
+            , "description":"A package for testing"
+            , "maintainers":[ {"email":"alice@example.com"}
+                            , {"email":"alice@example.com"}
+                             ]
+            , "time":{"modified":"2015-09-12T03:03:03.135Z"}
+             }
+         }
+        ''')
+
+        package = self.db.one('select * from packages')
+        assert package.emails == ['alice@example.com']
 
 
     def test_sn_handles_quoting(self):
@@ -65,8 +84,8 @@ class Tests(Harness):
         , "testi\\\"ng-pa\\\"ckage":
             { "name":"testi\\\"ng-pa\\\"ckage"
             , "description":"A package for \"testing\""
-            , "maintainers":[{"email":"alice@\"example\".com"}]
-            , "author": {"email":"\\\\\"bob\\\\\"@example.com"}
+            , "maintainers":[{"email":"\\\\\"alice\\\\\"@example.com"}]
+            , "author": {"email":"bob@\"example\".com"}
             , "time":{"modified":"2015-09-12T03:03:03.135Z"}
              }
          }
@@ -76,7 +95,7 @@ class Tests(Harness):
         assert package.package_manager == 'npm'
         assert package.name == r'testi\"ng-pa\"ckage'
         assert package.description == 'A package for "testing"'
-        assert package.emails == ['alice@"example".com', r'\\"bob\\"@example.com']
+        assert package.emails == [r'\\"alice\\"@example.com']
 
 
     def test_sn_handles_empty_description_and_emails(self):
