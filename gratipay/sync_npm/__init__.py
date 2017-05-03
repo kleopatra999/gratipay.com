@@ -1,7 +1,8 @@
 """This is the code behind the ``sync-npm`` command line tool, which keeps the
 ``packages`` table in our database in sync with npm. We run it on asynchronous
 worker dynos at Heroku using the `Heroku scheduler`_. The top-level command is
-at ``cli.main``, and the subcommands are in ``main`` in the other modules.
+at ``gratipay.cli.sync_npm``, and the subcommands are in ``main`` in the other
+submodules here.
 
 .. _Heroku scheduler: https://devcenter.heroku.com/articles/scheduler
 
