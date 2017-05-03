@@ -24,7 +24,7 @@ def arrayize(seq):
 
     """
     array = []
-    for item in seq:
+    for item in sorted(seq):
         assert type(item) is str
         escaped = item.replace(b'\\', b'\\\\').replace(b'"', b'\\"')
         quoted = b'"' + escaped + b'"'
@@ -80,7 +80,7 @@ def serialize(env, args, db):
             package = { 'package_manager': b'npm'
                       , 'name': value
                       , 'description': b''
-                      , 'emails': []
+                      , 'emails': set()
                        }
 
         key = lambda k: package['name'] + b'.' + k
@@ -90,8 +90,8 @@ def serialize(env, args, db):
             value = value.encode('utf8')
             if prefix == key(b'description'):
                 package['description'] = value
-            elif prefix in (key(b'author.email'), key(b'maintainers.item.email')):
-                package['emails'].append(value)
+            elif prefix  == key(b'maintainers.item.email'):
+                package['emails'].add(value)
 
     nprocessed += serialize_one(out, package)  # Don't forget the last one!
     log_stats()
